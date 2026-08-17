@@ -11,25 +11,18 @@ async function initializeDatabase() {
     try {
 
         // =====================================================
-        // USERS
+        // USERS TABLE
         // =====================================================
 
         await pool.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
-
                 name VARCHAR(100) NOT NULL,
-
                 email VARCHAR(255) UNIQUE NOT NULL,
-
                 password_hash TEXT NOT NULL,
-
                 telegram_username VARCHAR(100),
-
                 whatsapp_number VARCHAR(30),
-
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
@@ -38,29 +31,20 @@ async function initializeDatabase() {
 
 
         // =====================================================
-        // SERVICES
+        // SERVICES TABLE
         // =====================================================
 
         await pool.query(`
             CREATE TABLE IF NOT EXISTS services (
                 id SERIAL PRIMARY KEY,
-
                 name VARCHAR(150) NOT NULL,
-
                 description TEXT,
-
                 price DECIMAL(10, 2) NOT NULL,
-
                 currency VARCHAR(10) DEFAULT 'USD',
-
                 price_type VARCHAR(30) DEFAULT 'fixed',
-
                 category VARCHAR(100) DEFAULT 'Telegram Ads',
-
                 active BOOLEAN DEFAULT TRUE,
-
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
@@ -69,39 +53,26 @@ async function initializeDatabase() {
 
 
         // =====================================================
-        // ORDERS
+        // ORDERS TABLE
         // =====================================================
 
         await pool.query(`
             CREATE TABLE IF NOT EXISTS orders (
                 id SERIAL PRIMARY KEY,
-
                 order_number VARCHAR(30) UNIQUE NOT NULL,
-
                 user_id INTEGER REFERENCES users(id)
                     ON DELETE SET NULL,
-
                 service_id INTEGER REFERENCES services(id)
                     ON DELETE SET NULL,
-
                 price DECIMAL(10, 2) NOT NULL,
-
                 currency VARCHAR(10) DEFAULT 'USD',
-
                 status VARCHAR(30) DEFAULT 'Pending',
-
                 contact_method VARCHAR(20),
-
                 customer_message TEXT,
-
                 telegram_username VARCHAR(100),
-
                 whatsapp_number VARCHAR(30),
-
                 admin_notes TEXT,
-
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
@@ -110,19 +81,15 @@ async function initializeDatabase() {
 
 
         // =====================================================
-        // ADMINS
+        // ADMINS TABLE
         // =====================================================
 
         await pool.query(`
             CREATE TABLE IF NOT EXISTS admins (
                 id SERIAL PRIMARY KEY,
-
                 name VARCHAR(100) NOT NULL,
-
                 email VARCHAR(255) UNIQUE NOT NULL,
-
                 password_hash TEXT NOT NULL,
-
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
@@ -167,111 +134,119 @@ async function initializeDatabase() {
         // =====================================================
 
         const services = [
-
-            [
-                "Already Approved Channel",
-                "Already approved Telegram channel service.",
-                100.00,
-                "fixed"
-            ],
-
-            [
-                "Already Approved Bot",
-                "Already approved Telegram bot service.",
-                60.00,
-                "fixed"
-            ],
-
-            [
-                "Already Approved MiniApp",
-                "Already approved Telegram MiniApp service.",
-                80.00,
-                "fixed"
-            ],
-
-            [
-                "Telegram Ads Approval Assistance",
-                "Assistance reviewing issues that may prevent a Telegram advertisement from being approved.",
-                40.00,
-                "fixed"
-            ],
-
-            [
-                "Telegram Ad Setup",
-                "Telegram advertising campaign setup assistance.",
-                50.00,
-                "fixed"
-            ],
-
-            [
-                "Telegram Ad Copy Creation",
-                "Professional Telegram advertisement copy creation.",
-                25.00,
-                "fixed"
-            ],
-
-            [
-                "Telegram Ads Campaign Management",
-                "Telegram advertising campaign management service.",
-                100.00,
-                "starting_from"
-            ],
-
-            [
-                "Telegram Ad Declined Review",
-                "Review of a declined Telegram advertisement and possible issues.",
-                25.00,
-                "fixed"
-            ],
-
-            [
-                "Telegram Destination Compliance Check",
-                "Review of a Telegram advertising destination for potential compliance issues.",
-                40.00,
-                "fixed"
-            ],
-
-            [
-                "Telegram Ads Campaign Audit",
-                "Review and audit of an existing Telegram advertising campaign.",
-                50.00,
-                "fixed"
-            ]
-
+            {
+                name: "Already Approved Channel",
+                description: "Already approved Telegram channel service.",
+                price: 100.00,
+                priceType: "fixed"
+            },
+            {
+                name: "Already Approved Bot",
+                description: "Already approved Telegram bot service.",
+                price: 60.00,
+                priceType: "fixed"
+            },
+            {
+                name: "Already Approved MiniApp",
+                description: "Already approved Telegram MiniApp service.",
+                price: 80.00,
+                priceType: "fixed"
+            },
+            {
+                name: "Telegram Ads Approval Assistance",
+                description: "Assistance reviewing issues that may prevent a Telegram advertisement from being approved.",
+                price: 40.00,
+                priceType: "fixed"
+            },
+            {
+                name: "Telegram Ad Setup",
+                description: "Telegram advertising campaign setup assistance.",
+                price: 50.00,
+                priceType: "fixed"
+            },
+            {
+                name: "Telegram Ad Copy Creation",
+                description: "Professional Telegram advertisement copy creation.",
+                price: 25.00,
+                priceType: "fixed"
+            },
+            {
+                name: "Telegram Ads Campaign Management",
+                description: "Telegram advertising campaign management service.",
+                price: 100.00,
+                priceType: "starting_from"
+            },
+            {
+                name: "Telegram Ad Declined Review",
+                description: "Review of a declined Telegram advertisement and possible issues.",
+                price: 25.00,
+                priceType: "fixed"
+            },
+            {
+                name: "Telegram Destination Compliance Check",
+                description: "Review of a Telegram advertising destination for potential compliance issues.",
+                price: 40.00,
+                priceType: "fixed"
+            },
+            {
+                name: "Telegram Ads Campaign Audit",
+                description: "Review and audit of an existing Telegram advertising campaign.",
+                price: 50.00,
+                priceType: "fixed"
+            }
         ];
 
 
-        // Insert only if the service does not already exist.
+        // =====================================================
+        // INSERT SERVICES
+        // =====================================================
+
         for (const service of services) {
 
-            await pool.query(
+            const existingService = await pool.query(
                 `
-                INSERT INTO services
-                (
-                    name,
-                    description,
-                    price,
-                    currency,
-                    price_type,
-                    category,
-                    active
-                )
-                SELECT
-                    $1,
-                    $2,
-                    $3,
-                    'USD',
-                    $4,
-                    'Telegram Ads',
-                    TRUE
-                WHERE NOT EXISTS (
-                    SELECT 1
-                    FROM services
-                    WHERE name = $1
-                );
+                SELECT id
+                FROM services
+                WHERE name = $1::VARCHAR
+                LIMIT 1;
                 `,
-                service
+                [service.name]
             );
+
+            if (existingService.rows.length === 0) {
+
+                await pool.query(
+                    `
+                    INSERT INTO services
+                    (
+                        name,
+                        description,
+                        price,
+                        currency,
+                        price_type,
+                        category,
+                        active
+                    )
+                    VALUES
+                    (
+                        $1::VARCHAR,
+                        $2::TEXT,
+                        $3::DECIMAL,
+                        'USD',
+                        $4::VARCHAR,
+                        'Telegram Ads',
+                        TRUE
+                    );
+                    `,
+                    [
+                        service.name,
+                        service.description,
+                        service.price,
+                        service.priceType
+                    ]
+                );
+
+            }
 
         }
 
@@ -279,7 +254,7 @@ async function initializeDatabase() {
 
 
         // =====================================================
-        // FINAL CHECK
+        // COUNT SERVICES
         // =====================================================
 
         const result = await pool.query(`
@@ -291,6 +266,12 @@ async function initializeDatabase() {
             `✓ Total services available: ${result.rows[0].total}`
         );
 
+
+        // =====================================================
+        // SUCCESS
+        // =====================================================
+
+        console.log("");
         console.log("========================================");
         console.log("     DATABASE INITIALIZATION COMPLETE");
         console.log("========================================");
@@ -309,6 +290,7 @@ async function initializeDatabase() {
         throw error;
     }
 }
+
 
 module.exports = {
     initializeDatabase
