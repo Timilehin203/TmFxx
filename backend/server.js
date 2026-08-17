@@ -5,6 +5,11 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
+const {
+    pool,
+    testDatabaseConnection
+} = require("./config/database");
+
 const app = express();
 
 const PORT = process.env.PORT || 3000;
@@ -12,6 +17,11 @@ const PORT = process.env.PORT || 3000;
 const FRONTEND_URL =
     process.env.FRONTEND_URL ||
     "https://matildamillie382-crypto.github.io";
+
+
+/* =========================================================
+   MIDDLEWARE
+   ========================================================= */
 
 app.use(
     cors({
@@ -23,12 +33,15 @@ app.use(
 
 app.use(express.json());
 
-app.use(express.urlencoded({
-    extended: true
-}));
+app.use(
+    express.urlencoded({
+        extended: true
+    })
+);
+
 
 /* =========================================================
-   BASIC ROUTES
+   ROOT
    ========================================================= */
 
 app.get("/", (req, res) => {
@@ -37,36 +50,62 @@ app.get("/", (req, res) => {
         project: "TimiFxx Marketing",
         status: "online",
         message: "TimiFxx Marketing API is running.",
-        version: "1.0.0"
+        version: "1.1.0"
     });
 
 });
 
 
-app.get("/api/health", (req, res) => {
+/* =========================================================
+   HEALTH CHECK
+   ========================================================= */
 
-    res.status(200).json({
-        status: "ok",
-        service: "TimiFxx Marketing API",
-        database: "not connected yet",
-        timestamp: new Date().toISOString()
-    });
+app.get("/api/health", async (req, res) => {
+
+    try {
+
+        await pool.query("SELECT 1");
+
+        res.status(200).json({
+            status: "ok",
+            service: "TimiFxx Marketing API",
+            database: "connected",
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+
+        console.error("Health check database error:", error);
+
+        res.status(503).json({
+            status: "error",
+            service: "TimiFxx Marketing API",
+            database: "disconnected",
+            timestamp: new Date().toISOString()
+        });
+
+    }
 
 });
 
+
+/* =========================================================
+   API INFORMATION
+   ========================================================= */
 
 app.get("/api", (req, res) => {
 
     res.json({
         name: "TimiFxx Marketing API",
-        version: "1.0.0",
+        version: "1.1.0",
         status: "online",
 
         endpoints: {
             health: "/api/health",
             services: "/api/services",
             orders: "/api/orders",
-            authentication: "/api/auth"
+            authentication: "/api/auth",
+            admin: "/api/admin"
         }
     });
 
@@ -74,99 +113,81 @@ app.get("/api", (req, res) => {
 
 
 /* =========================================================
-   TEMPORARY SERVICES ROUTE
+   SERVICES
    ========================================================= */
 
-app.get("/api/services", (req, res) => {
+app.get("/api/services", async (req, res) => {
 
-    const services = [
-        {
-            id: 1,
-            name: "Already Approved Channel",
-            price: 100,
-            currency: "USD",
-            category: "Telegram Ads"
-        },
+    try {
 
-        {
-            id: 2,
-            name: "Already Approved Bot",
-            price: 60,
-            currency: "USD",
-            category: "Telegram Ads"
-        },
+        const result = await pool.query(
+            `
+            SELECT
+                id,
+                name,
+                description,
+                price,
+                currency,
+                price_type,
+                category,
+                active
+            FROM services
+            WHERE active = TRUE
+            ORDER BY id ASC
+            `
+        );
 
-        {
-            id: 3,
-            name: "Already Approved MiniApp",
-            price: 80,
-            currency: "USD",
-            category: "Telegram Ads"
-        },
+        res.json({
+            success: true,
+            count: result.rows.length,
+            services: result.rows
+        });
 
-        {
-            id: 4,
-            name: "Telegram Ads Approval Assistance",
-            price: 40,
-            currency: "USD",
-            category: "Telegram Ads"
-        },
+    } catch (error) {
 
-        {
-            id: 5,
-            name: "Telegram Ad Setup",
-            price: 50,
-            currency: "USD",
-            category: "Telegram Ads"
-        },
+        console.error("Services error:", error);
 
-        {
-            id: 6,
-            name: "Telegram Ad Copy Creation",
-            price: 25,
-            currency: "USD",
-            category: "Telegram Ads"
-        },
+        res.status(500).json({
+            success: false,
+            message: "Unable to load services."
+        });
 
-        {
-            id: 7,
-            name: "Telegram Ads Campaign Management",
-            price: 100,
-            currency: "USD",
-            category: "Telegram Ads",
-            priceType: "starting_from"
-        },
+    }
 
-        {
-            id: 8,
-            name: "Telegram Ad Declined Review",
-            price: 25,
-            currency: "USD",
-            category: "Telegram Ads"
-        },
+});
 
-        {
-            id: 9,
-            name: "Telegram Destination Compliance Check",
-            price: 40,
-            currency: "USD",
-            category: "Telegram Ads"
-        },
 
-        {
-            id: 10,
-            name: "Telegram Ads Campaign Audit",
-            price: 50,
-            currency: "USD",
-            category: "Telegram Ads"
-        }
-    ];
+/* =========================================================
+   DATABASE TEST
+   ========================================================= */
 
-    res.json({
-        success: true,
-        count: services.length,
-        services
-    });
+app.get("/api/database-test", async (req, res) => {
+
+    try {
+
+        const result = await pool.query(
+            "SELECT NOW() AS current_time"
+        );
+
+        res.json({
+            success: true,
+            database: "PostgreSQL",
+            connected: true,
+            current_time: result.rows[0].current_time
+        });
+
+    } catch (error) {
+
+        console.error("Database test error:", error);
+
+        res.status(500).json({
+            success: false,
+            database: "PostgreSQL",
+            connected: false,
+            message: "Database connection failed."
+        });
+
+    }
 
 });
 
@@ -176,17 +197,17 @@ app.get("/api/services", (req, res) => {
    ========================================================= */
 
 /*
-   Authentication:
-   POST /api/auth/register
-   POST /api/auth/login
+    Authentication:
+    POST /api/auth/register
+    POST /api/auth/login
 
-   Orders:
-   POST /api/orders
-   GET /api/orders
+    Orders:
+    POST /api/orders
+    GET /api/orders
 
-   Admin:
-   GET /api/admin/orders
-   PATCH /api/admin/orders/:id
+    Admin:
+    GET /api/admin/orders
+    PATCH /api/admin/orders/:id
 */
 
 
@@ -225,16 +246,42 @@ app.use((error, req, res, next) => {
    START SERVER
    ========================================================= */
 
-app.listen(PORT, "0.0.0.0", () => {
+async function startServer() {
 
-    console.log("");
-    console.log("========================================");
-    console.log("       TIMIFXX MARKETING API");
-    console.log("========================================");
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Frontend: ${FRONTEND_URL}`);
-    console.log("Status: ONLINE");
-    console.log("========================================");
-    console.log("");
+    try {
 
-});
+        await testDatabaseConnection();
+
+        app.listen(PORT, "0.0.0.0", () => {
+
+            console.log("");
+            console.log("========================================");
+            console.log("       TIMIFXX MARKETING API");
+            console.log("========================================");
+            console.log(`Server running on port ${PORT}`);
+            console.log(`Frontend: ${FRONTEND_URL}`);
+            console.log("Database: CONNECTED");
+            console.log("Status: ONLINE");
+            console.log("========================================");
+            console.log("");
+
+        });
+
+    } catch (error) {
+
+        console.error("");
+        console.error("========================================");
+        console.error("       DATABASE CONNECTION FAILED");
+        console.error("========================================");
+        console.error(error.message);
+        console.error("========================================");
+        console.error("");
+
+        process.exit(1);
+
+    }
+
+}
+
+
+startServer();
