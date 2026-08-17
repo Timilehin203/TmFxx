@@ -10,6 +10,10 @@ const {
     testDatabaseConnection
 } = require("./config/database");
 
+const {
+    initializeDatabase
+} = require("./database/init");
+
 const app = express();
 
 const PORT = process.env.PORT || 3000;
@@ -50,7 +54,7 @@ app.get("/", (req, res) => {
         project: "TimiFxx Marketing",
         status: "online",
         message: "TimiFxx Marketing API is running.",
-        version: "1.1.0"
+        version: "1.2.0"
     });
 
 });
@@ -97,11 +101,12 @@ app.get("/api", (req, res) => {
 
     res.json({
         name: "TimiFxx Marketing API",
-        version: "1.1.0",
+        version: "1.2.0",
         status: "online",
 
         endpoints: {
             health: "/api/health",
+            database: "/api/database-test",
             services: "/api/services",
             orders: "/api/orders",
             authentication: "/api/auth",
@@ -193,25 +198,6 @@ app.get("/api/database-test", async (req, res) => {
 
 
 /* =========================================================
-   FUTURE ROUTES
-   ========================================================= */
-
-/*
-    Authentication:
-    POST /api/auth/register
-    POST /api/auth/login
-
-    Orders:
-    POST /api/orders
-    GET /api/orders
-
-    Admin:
-    GET /api/admin/orders
-    PATCH /api/admin/orders/:id
-*/
-
-
-/* =========================================================
    404 HANDLER
    ========================================================= */
 
@@ -250,8 +236,13 @@ async function startServer() {
 
     try {
 
+        // Test PostgreSQL
         await testDatabaseConnection();
 
+        // Create tables and load services
+        await initializeDatabase();
+
+        // Start API
         app.listen(PORT, "0.0.0.0", () => {
 
             console.log("");
@@ -271,7 +262,7 @@ async function startServer() {
 
         console.error("");
         console.error("========================================");
-        console.error("       DATABASE CONNECTION FAILED");
+        console.error("       SERVER STARTUP FAILED");
         console.error("========================================");
         console.error(error.message);
         console.error("========================================");
