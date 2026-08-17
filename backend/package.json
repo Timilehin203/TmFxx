@@ -1,19 +1,16 @@
 {
   "name": "tmifxx-marketing-backend",
-  "version": "1.1.0",
-  "description": "Backend API for TimiFxx Marketing",
+  "version": "1.2.0",
+  "description": "TimiFxx Marketing website backend",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "engines": {
-    "node": ">=20"
-  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
+    "dotenv": "^16.4.5",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.13.1"
