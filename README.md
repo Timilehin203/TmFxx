@@ -1,27 +1,58 @@
 # TimiFxx Marketing
 
-Telegram Ads Marketing Website.
+## Telegram Ads Marketing Website
+
+TimiFxx Marketing provides Telegram-focused advertising solutions and direct assistance for Telegram Ads approval issues.
 
 ## Services
 
-- Already Approved Channel — $100
-- Already Approved Bot — $60
-- Already Approved MiniApp — $80
+### Already Approved Channel
+
+**Price: $100**
+
+A ready approved Telegram channel for advertising requirements.
+
+### Already Approved Bot
+
+**Price: $60**
+
+A ready approved Telegram bot for advertising requirements.
+
+### Already Approved MiniApp
+
+**Price: $80**
+
+A ready approved Telegram MiniApp for advertising requirements.
+
+## Ordering
+
+Customers can select a service directly from the website.
+
+When the customer clicks the order button, Telegram opens with a pre-filled message containing:
+
+- TimiFxx Marketing
+- The selected service
+- The service price
+- A request to proceed with the order
+
+The customer sends the message from their own Telegram account.
+
+The conversation then continues directly between the customer and TimiFxx Marketing on Telegram.
 
 ## Contact
 
-Telegram: @timifxx203
+Telegram:
 
-Customers can select a service and place their order directly through Telegram using the pre-filled order message.
+@timifxx203
 
-## Website
+Telegram link:
 
-TimiFxx Marketing provides Telegram-focused marketing solutions and assistance.
+https://t.me/timifxx203
 
-## Project Structure
+## Website Structure
 
 ```text
-TimiFxx-Marketing/
+TMFxx/
 │
 ├── index.html
 │
@@ -30,5 +61,9 @@ TimiFxx-Marketing/
 │
 ├── js/
 │   └── script.js
+│
+├── .github/
+│   └── workflows/
+│       └── pages.yml
 │
 └── README.md
