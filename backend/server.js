@@ -3,7 +3,7 @@
 /*
 =========================================================
  TimiFxx Marketing Backend
- Version: 1.2.0
+ Version: 1.3.0
 
  Features:
  - PostgreSQL connection
@@ -12,6 +12,7 @@
  - Health check
  - Database test
  - Railway deployment support
+ - Graceful shutdown
 =========================================================
 */
 
@@ -21,8 +22,7 @@ const express = require("express");
 const cors = require("cors");
 
 const {
-    pool,
-    testDatabaseConnection
+    pool
 } = require("./config/database");
 
 const authRoutes = require("./routes/auth");
@@ -39,7 +39,7 @@ const app = express();
    ENVIRONMENT VARIABLES
 ===================================================== */
 
-const PORT = process.env.PORT || 8080;
+const PORT = Number(process.env.PORT) || 8080;
 
 const FRONTEND_URL =
     process.env.FRONTEND_URL ||
@@ -98,12 +98,22 @@ app.use((req, res, next) => {
 app.get("/", (req, res) => {
 
     res.json({
+
         success: true,
+
         project: "TimiFxx Marketing",
+
+        version: "1.3.0",
+
         status: "online",
-        message: "TimiFxx Marketing API is running.",
+
+        message:
+            "TimiFxx Marketing API is running.",
+
         frontend: FRONTEND_URL,
+
         database: "PostgreSQL"
+
     });
 
 });
@@ -117,7 +127,9 @@ app.get("/api/health", async (req, res) => {
 
     try {
 
-        await pool.query("SELECT 1");
+        const result = await pool.query(
+            "SELECT NOW() AS database_time"
+        );
 
         res.json({
 
@@ -129,7 +141,11 @@ app.get("/api/health", async (req, res) => {
 
             project: "TimiFxx Marketing",
 
-            time: new Date().toISOString()
+            database_time:
+                result.rows[0].database_time,
+
+            time:
+                new Date().toISOString()
 
         });
 
@@ -148,7 +164,8 @@ app.get("/api/health", async (req, res) => {
 
             database: "disconnected",
 
-            message: "Database connection unavailable."
+            message:
+                "Database connection unavailable."
 
         });
 
@@ -169,23 +186,31 @@ app.get("/api", (req, res) => {
 
         project: "TimiFxx Marketing",
 
-        version: "1.2.0",
+        version: "1.3.0",
 
         status: "online",
 
         endpoints: {
 
+            home: "/",
+
+            api: "/api",
+
             health: "/api/health",
 
             services: "/api/services",
 
-            databaseTest: "/api/database-test",
+            databaseTest:
+                "/api/database-test",
 
-            signup: "POST /api/auth/signup",
+            signup:
+                "POST /api/auth/signup",
 
-            login: "POST /api/auth/login",
+            login:
+                "POST /api/auth/login",
 
-            currentUser: "GET /api/auth/me"
+            currentUser:
+                "GET /api/auth/me"
 
         }
 
@@ -214,149 +239,217 @@ app.use(
    SERVICES
 ===================================================== */
 
-app.get("/api/services", async (req, res) => {
+app.get(
+    "/api/services",
+    async (req, res) => {
 
-    try {
+        try {
 
-        const result = await pool.query(
-            `
-            SELECT *
-            FROM services
-            ORDER BY id ASC
-            `
-        );
-
-
-        res.json({
-
-            success: true,
-
-            count: result.rows.length,
-
-            services: result.rows
-
-        });
-
-    } catch (error) {
-
-        console.error(
-            "Services error:",
-            error.message
-        );
+            const result =
+                await pool.query(
+                    `
+                    SELECT *
+                    FROM services
+                    ORDER BY id ASC
+                    `
+                );
 
 
-        res.status(500).json({
+            res.json({
 
-            success: false,
+                success: true,
 
-            message: "Unable to load services."
+                count:
+                    result.rows.length,
 
-        });
+                services:
+                    result.rows
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Services error:",
+                error.message
+            );
+
+
+            res.status(500).json({
+
+                success: false,
+
+                message:
+                    "Unable to load services."
+
+            });
+
+        }
 
     }
-
-});
+);
 
 
 /* =====================================================
    DATABASE TEST
 ===================================================== */
 
-app.get("/api/database-test", async (req, res) => {
+app.get(
+    "/api/database-test",
+    async (req, res) => {
 
-    try {
+        try {
 
-        const result = await pool.query(
-            `
-            SELECT
-                NOW() AS database_time
-            `
-        );
-
-
-        res.json({
-
-            success: true,
-
-            database: "PostgreSQL",
-
-            status: "connected",
-
-            database_time:
-                result.rows[0].database_time
-
-        });
-
-    } catch (error) {
-
-        console.error(
-            "Database test error:",
-            error.message
-        );
+            const result =
+                await pool.query(
+                    `
+                    SELECT
+                        NOW() AS database_time
+                    `
+                );
 
 
-        res.status(500).json({
+            res.json({
 
-            success: false,
+                success: true,
 
-            database: "PostgreSQL",
+                database: "PostgreSQL",
 
-            status: "disconnected",
+                status: "connected",
 
-            message:
-                "Database connection failed."
+                database_time:
+                    result.rows[0].database_time
 
-        });
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Database test error:",
+                error.message
+            );
+
+
+            res.status(500).json({
+
+                success: false,
+
+                database: "PostgreSQL",
+
+                status: "disconnected",
+
+                message:
+                    "Database connection failed."
+
+            });
+
+        }
 
     }
-
-});
+);
 
 
 /* =====================================================
    404 HANDLER
 ===================================================== */
 
-app.use((req, res) => {
+app.use(
+    (req, res) => {
 
-    res.status(404).json({
+        res.status(404).json({
 
-        success: false,
+            success: false,
 
-        message: "API endpoint not found.",
+            message:
+                "API endpoint not found.",
 
-        path: req.originalUrl
+            path:
+                req.originalUrl
 
-    });
+        });
 
-});
+    }
+);
 
 
 /* =====================================================
    GLOBAL ERROR HANDLER
 ===================================================== */
 
-app.use((error, req, res, next) => {
+app.use(
+    (error, req, res, next) => {
 
-    console.error(
-        "Server error:",
-        error
+        console.error(
+            "Server error:",
+            error
+        );
+
+
+        if (res.headersSent) {
+
+            return next(error);
+
+        }
+
+
+        res.status(
+            error.status || 500
+        ).json({
+
+            success: false,
+
+            message:
+                error.message ||
+                "Internal server error."
+
+        });
+
+    }
+);
+
+
+/* =====================================================
+   DATABASE STARTUP CHECK
+===================================================== */
+
+async function checkDatabase() {
+
+    console.log("");
+
+    console.log(
+        "========================================"
+    );
+
+    console.log(
+        "       POSTGRESQL CONNECTION"
+    );
+
+    console.log(
+        "========================================"
     );
 
 
-    res.status(
-        error.status || 500
-    ).json({
+    const result =
+        await pool.query(
+            "SELECT NOW() AS database_time"
+        );
 
-        success: false,
 
-        message:
-            error.message ||
-            "Internal server error."
+    console.log(
+        "Database: CONNECTED"
+    );
 
-    });
+    console.log(
+        `Database time: ${result.rows[0].database_time.toISOString()}`
+    );
 
-});
+    console.log(
+        "========================================"
+    );
+
+    console.log("");
+
+}
 
 
 /* =====================================================
@@ -367,83 +460,131 @@ async function startServer() {
 
     try {
 
-        console.log("");
-        console.log(
-            "========================================"
-        );
+        /*
+        -------------------------------------------------
+        Test PostgreSQL exactly once before starting
+        the HTTP server.
+        -------------------------------------------------
+        */
 
-        console.log(
-            "       POSTGRESQL CONNECTION"
-        );
-
-        console.log(
-            "========================================"
-        );
+        await checkDatabase();
 
 
-        /* ---------------------------------------------
-           Test PostgreSQL connection
-        --------------------------------------------- */
+        /*
+        -------------------------------------------------
+        Start Express
+        -------------------------------------------------
+        */
 
-        await testDatabaseConnection();
+        const server =
+            app.listen(
+                PORT,
+                "0.0.0.0",
+                () => {
+
+                    console.log(
+                        "========================================"
+                    );
+
+                    console.log(
+                        "       TIMIFXX MARKETING API"
+                    );
+
+                    console.log(
+                        "========================================"
+                    );
+
+                    console.log(
+                        `Server running on port ${PORT}`
+                    );
+
+                    console.log(
+                        `Frontend: ${FRONTEND_URL}`
+                    );
+
+                    console.log(
+                        "Database: CONNECTED"
+                    );
+
+                    console.log(
+                        "Status: ONLINE"
+                    );
+
+                    console.log(
+                        "========================================"
+                    );
+
+                    console.log("");
+
+                }
+            );
 
 
-        console.log(
-            "Database: CONNECTED"
-        );
+        /*
+        -------------------------------------------------
+        Graceful shutdown
+        -------------------------------------------------
+        */
 
-
-        /* ---------------------------------------------
-           Start Express server
-        --------------------------------------------- */
-
-        app.listen(
-            PORT,
-            "0.0.0.0",
-            () => {
+        const shutdown =
+            async (signal) => {
 
                 console.log("");
-                console.log(
-                    "========================================"
-                );
 
                 console.log(
-                    "       TIMIFXX MARKETING API"
+                    `${signal} received. Shutting down server...`
                 );
 
-                console.log(
-                    "========================================"
+
+                server.close(
+                    async () => {
+
+                        try {
+
+                            await pool.end();
+
+                            console.log(
+                                "PostgreSQL connection pool closed."
+                            );
+
+                            console.log(
+                                "Server shutdown complete."
+                            );
+
+                            process.exit(0);
+
+                        } catch (error) {
+
+                            console.error(
+                                "Error during shutdown:",
+                                error.message
+                            );
+
+                            process.exit(1);
+
+                        }
+
+                    }
                 );
 
-                console.log(
-                    `Server running on port ${PORT}`
-                );
+            };
 
-                console.log(
-                    `Frontend: ${FRONTEND_URL}`
-                );
 
-                console.log(
-                    "Database: CONNECTED"
-                );
+        process.once(
+            "SIGTERM",
+            () => shutdown("SIGTERM")
+        );
 
-                console.log(
-                    "Status: ONLINE"
-                );
-
-                console.log(
-                    "========================================"
-                );
-
-                console.log("");
-
-            }
+        process.once(
+            "SIGINT",
+            () => shutdown("SIGINT")
         );
 
 
     } catch (error) {
 
         console.error("");
+
         console.error(
             "========================================"
         );
@@ -468,8 +609,11 @@ async function startServer() {
 
 
         /*
-         Railway needs the process to exit when
-         startup fails so it can restart it.
+        -------------------------------------------------
+        Railway should restart the application when
+        PostgreSQL or another required startup service
+        is unavailable.
+        -------------------------------------------------
         */
 
         process.exit(1);
