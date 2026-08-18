@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="robots"
+        content="noindex, nofollow"
+    >
+
+    <title>TimiFxx Marketing | Admin Dashboard</title>
+
+    <link
+        rel="preconnect"
+        href="https://fonts.googleapis.com"
+    >
+
+    <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin
+    >
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+    >
+
+    <link
+        rel="stylesheet"
+        href="admin.css"
+    >
+
+</head>
+
+
+<body>
+
+
+    <!-- LOGIN -->
+
+    <section
+        id="loginScreen"
+        class="login-screen"
+    >
+
+        <div class="login-card">
+
+            <div class="brand-icon">
+                T
+            </div>
+
+            <div class="login-label">
+                TIMIFXX MARKETING
+            </div>
+
+            <h1>
+                Admin Dashboard
+            </h1>
+
+            <p>
+                Sign in to manage your Telegram
+                marketing services.
+            </p>
+
+            <form id="loginForm">
+
+                <label for="adminKey">
+                    Admin Key
+                </label>
+
+                <input
+                    id="adminKey"
+                    type="password"
+                    placeholder="Enter admin key"
+                    autocomplete="off"
+                    required
+                >
+
+                <button
+                    type="submit"
+                    class="login-button"
+                >
+                    <span>
+                        Sign In
+                    </span>
+                </button>
+
+            </form>
+
+            <div
+                id="loginMessage"
+                class="message"
+            ></div>
+
+        </div>
+
+    </section>
+
+
+    <!-- DASHBOARD -->
+
+    <section
+        id="dashboard"
+        class="dashboard hidden"
+    >
+
+        <!-- HEADER -->
+
+        <header class="dashboard-header">
+
+            <div>
+
+                <div class="brand-small">
+                    <span>T</span>
+
+                    TimiFxx
+                    <strong>Marketing</strong>
+                </div>
+
+                <h1>
+                    Admin Dashboard
+                </h1>
+
+            </div>
+
+
+            <button
+                id="logoutButton"
+                class="logout-button"
+            >
+                Logout
+            </button>
+
+        </header>
+
+
+        <main class="dashboard-main">
+
+
+            <!-- STATISTICS -->
+
+            <div class="stats-grid">
+
+                <div class="stat-card">
+
+                    <span class="stat-icon">
+                        📋
+                    </span>
+
+                    <div>
+
+                        <small>
+                            Total Services
+                        </small>
+
+                        <strong id="totalServices">
+                            0
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <div class="stat-card">
+
+                    <span class="stat-icon">
+                        🟢
+                    </span>
+
+                    <div>
+
+                        <small>
+                            Active Services
+                        </small>
+
+                        <strong id="activeServices">
+                            0
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <div class="stat-card">
+
+                    <span class="stat-icon">
+                        💰
+                    </span>
+
+                    <div>
+
+                        <small>
+                            Services Value
+                        </small>
+
+                        <strong id="totalValue">
+                            $0
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- SERVICE MANAGEMENT -->
+
+            <section class="services-panel">
+
+                <div class="panel-header">
+
+                    <div>
+
+                        <span class="panel-label">
+                            SERVICE MANAGEMENT
+                        </span>
+
+                        <h2>
+                            Your Services
+                        </h2>
+
+                        <p>
+                            Update prices and service availability
+                            directly from your dashboard.
+                        </p>
+
+                    </div>
+
+
+                    <button
+                        id="refreshButton"
+                        class="refresh-button"
+                    >
+                        ↻ Refresh
+                    </button>
+
+                </div>
+
+
+                <div
+                    id="dashboardMessage"
+                    class="dashboard-message"
+                ></div>
+
+
+                <div
+                    id="servicesContainer"
+                    class="services-container"
+                >
+
+                    <div class="loading">
+                        Loading services...
+                    </div>
+
+                </div>
+
+            </section>
+
+
+        </main>
+
+
+        <footer class="dashboard-footer">
+
+            <span>
+                TimiFxx Marketing Admin
+            </span>
+
+            <span>
+                Secure Management Panel
+            </span>
+
+        </footer>
+
+    </section>
+
+
+    <script src="admin.js"></script>
+
+</body>
+
+</html>
