@@ -3,17 +3,19 @@
 /*
 =========================================================
  TimiFxx Marketing Backend
- Version: 1.4.0
+ Version: 2.0.0
 
  Features:
  - PostgreSQL connection
  - Service API
  - Authentication API
+ - Admin Dashboard API
+ - Secure admin login
+ - Price management
+ - Service activation/deactivation
  - Health check
- - Database test
  - Railway deployment support
  - Graceful shutdown
- - Protected service price update
 =========================================================
 */
 
@@ -21,6 +23,7 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 
 const {
     pool
@@ -40,8 +43,7 @@ const app = express();
    ENVIRONMENT VARIABLES
 ===================================================== */
 
-const PORT =
-    Number(process.env.PORT) || 8080;
+const PORT = Number(process.env.PORT) || 8080;
 
 const FRONTEND_URL =
     process.env.FRONTEND_URL ||
@@ -49,6 +51,16 @@ const FRONTEND_URL =
 
 const ADMIN_UPDATE_KEY =
     process.env.ADMIN_UPDATE_KEY;
+
+if (!ADMIN_UPDATE_KEY) {
+
+    console.error(
+        "ADMIN_UPDATE_KEY is not configured."
+    );
+
+    process.exit(1);
+
+}
 
 
 /* =====================================================
@@ -106,23 +118,18 @@ app.get("/", (req, res) => {
 
         success: true,
 
-        project:
-            "TimiFxx Marketing",
+        project: "TimiFxx Marketing",
 
-        version:
-            "1.4.0",
+        version: "2.0.0",
 
-        status:
-            "online",
+        status: "online",
 
         message:
             "TimiFxx Marketing API is running.",
 
-        frontend:
-            FRONTEND_URL,
+        frontend: FRONTEND_URL,
 
-        database:
-            "PostgreSQL"
+        database: "PostgreSQL"
 
     });
 
@@ -133,136 +140,117 @@ app.get("/", (req, res) => {
    HEALTH CHECK
 ===================================================== */
 
-app.get(
-    "/api/health",
-    async (req, res) => {
+app.get("/api/health", async (req, res) => {
 
-        try {
+    try {
 
-            const result =
-                await pool.query(
-                    "SELECT NOW() AS database_time"
-                );
+        const result = await pool.query(
+            "SELECT NOW() AS database_time"
+        );
 
+        res.json({
 
-            res.json({
+            success: true,
 
-                success: true,
+            status: "online",
 
-                status:
-                    "online",
+            database: "connected",
 
-                database:
-                    "connected",
+            project: "TimiFxx Marketing",
 
-                project:
-                    "TimiFxx Marketing",
+            database_time:
+                result.rows[0].database_time,
 
-                database_time:
-                    result.rows[0].database_time,
+            time:
+                new Date().toISOString()
 
-                time:
-                    new Date().toISOString()
+        });
 
-            });
+    } catch (error) {
 
+        console.error(
+            "Health check database error:",
+            error.message
+        );
 
-        } catch (error) {
+        res.status(503).json({
 
-            console.error(
-                "Health check database error:",
-                error.message
-            );
+            success: false,
 
+            status: "degraded",
 
-            res.status(503).json({
+            database: "disconnected",
 
-                success: false,
+            message:
+                "Database connection unavailable."
 
-                status:
-                    "degraded",
-
-                database:
-                    "disconnected",
-
-                message:
-                    "Database connection unavailable."
-
-            });
-
-        }
+        });
 
     }
-);
+
+});
 
 
 /* =====================================================
    API INFORMATION
 ===================================================== */
 
-app.get(
-    "/api",
-    (req, res) => {
+app.get("/api", (req, res) => {
 
-        res.json({
+    res.json({
 
-            success: true,
+        success: true,
 
-            project:
-                "TimiFxx Marketing",
+        project: "TimiFxx Marketing",
 
-            version:
-                "1.4.0",
+        version: "2.0.0",
 
-            status:
-                "online",
+        status: "online",
 
-            endpoints: {
+        endpoints: {
 
-                home:
-                    "/",
+            home: "/",
 
-                api:
-                    "/api",
+            api: "/api",
 
-                health:
-                    "/api/health",
+            health: "/api/health",
 
-                services:
-                    "/api/services",
+            services: "/api/services",
 
-                databaseTest:
-                    "/api/database-test",
+            databaseTest:
+                "/api/database-test",
 
-                signup:
-                    "POST /api/auth/signup",
+            adminLogin:
+                "POST /api/admin/login",
 
-                login:
-                    "POST /api/auth/login",
+            adminServices:
+                "GET /api/admin/services",
 
-                currentUser:
-                    "GET /api/auth/me",
+            adminUpdatePrice:
+                "PATCH /api/admin/services/:id/price",
 
-                updatePrices:
-                    "POST /api/admin/update-prices"
+            adminUpdateStatus:
+                "PATCH /api/admin/services/:id/status",
 
-            }
+            signup:
+                "POST /api/auth/signup",
 
-        });
+            login:
+                "POST /api/auth/login",
 
-    }
-);
+            currentUser:
+                "GET /api/auth/me"
+
+        }
+
+    });
+
+});
 
 
 /* =====================================================
    AUTHENTICATION ROUTES
 ===================================================== */
-
-/*
-   POST /api/auth/signup
-   POST /api/auth/login
-   GET  /api/auth/me
-*/
 
 app.use(
     "/api/auth",
@@ -271,7 +259,7 @@ app.use(
 
 
 /* =====================================================
-   SERVICES
+   PUBLIC SERVICES
 ===================================================== */
 
 app.get(
@@ -289,11 +277,9 @@ app.get(
                     `
                 );
 
-
             res.json({
 
-                success:
-                    true,
+                success: true,
 
                 count:
                     result.rows.length,
@@ -303,7 +289,6 @@ app.get(
 
             });
 
-
         } catch (error) {
 
             console.error(
@@ -311,472 +296,12 @@ app.get(
                 error.message
             );
 
-
             res.status(500).json({
 
-                success:
-                    false,
+                success: false,
 
                 message:
                     "Unable to load services."
-
-            });
-
-        }
-
-    }
-);
-
-
-/* =====================================================
-   PROTECTED PRICE UPDATE
-===================================================== */
-
-/*
-   This endpoint is intended to be used once to update
-   the five Telegram service prices.
-
-   Endpoint:
-
-   POST /api/admin/update-prices
-
-   Required header:
-
-   x-admin-key: YOUR_ADMIN_UPDATE_KEY
-
-   The endpoint does NOT depend on knowing the exact
-   capitalization or spacing of the service names.
-
-===================================================== */
-
-
-/* -----------------------------------------------------
-   SERVICE MATCHING HELPERS
------------------------------------------------------ */
-
-function normalizeServiceName(value) {
-
-    return String(value || "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "")
-        .trim();
-
-}
-
-
-function findServiceByKeywords(
-    services,
-    keywordGroups
-) {
-
-    return services.find((service) => {
-
-        const name =
-            normalizeServiceName(
-                service.name
-            );
-
-        return keywordGroups.every(
-            (group) => {
-
-                return group.some(
-                    (keyword) =>
-                        name.includes(
-                            normalizeServiceName(
-                                keyword
-                            )
-                        )
-                );
-
-            }
-        );
-
-    });
-
-}
-
-
-/* -----------------------------------------------------
-   UPDATE PRICES
------------------------------------------------------ */
-
-app.post(
-    "/api/admin/update-prices",
-    async (req, res) => {
-
-        try {
-
-            /* -----------------------------------------
-               Check admin key
-            ----------------------------------------- */
-
-            if (!ADMIN_UPDATE_KEY) {
-
-                console.error(
-                    "ADMIN_UPDATE_KEY is not configured."
-                );
-
-
-                return res.status(500).json({
-
-                    success:
-                        false,
-
-                    message:
-                        "Admin update key is not configured on the server."
-
-                });
-
-            }
-
-
-            const suppliedKey =
-                req.headers["x-admin-key"];
-
-
-            if (
-                !suppliedKey ||
-                suppliedKey !== ADMIN_UPDATE_KEY
-            ) {
-
-                return res.status(401).json({
-
-                    success:
-                        false,
-
-                    message:
-                        "Unauthorized."
-
-                });
-
-            }
-
-
-            /* -----------------------------------------
-               Load all services
-            ----------------------------------------- */
-
-            const servicesResult =
-                await pool.query(
-                    `
-                    SELECT *
-                    FROM services
-                    ORDER BY id ASC
-                    `
-                );
-
-
-            const services =
-                servicesResult.rows;
-
-
-            if (!services.length) {
-
-                return res.status(404).json({
-
-                    success:
-                        false,
-
-                    message:
-                        "No services were found in the database."
-
-                });
-
-            }
-
-
-            /* -----------------------------------------
-               Find target services
-            ----------------------------------------- */
-
-            const priceUpdates = [
-
-                {
-                    label:
-                        "Already Approved Telegram Channel",
-
-                    price:
-                        150,
-
-                    keywords: [
-                        [
-                            "telegram"
-                        ],
-                        [
-                            "channel"
-                        ],
-                        [
-                            "approved"
-                        ]
-                    ]
-                },
-
-                {
-                    label:
-                        "Already Approved Telegram Bot",
-
-                    price:
-                        70,
-
-                    keywords: [
-                        [
-                            "telegram"
-                        ],
-                        [
-                            "bot"
-                        ],
-                        [
-                            "approved"
-                        ]
-                    ]
-                },
-
-                {
-                    label:
-                        "Already Approved Telegram Miniapp",
-
-                    price:
-                        100,
-
-                    keywords: [
-                        [
-                            "telegram"
-                        ],
-                        [
-                            "miniapp",
-                            "mini app",
-                            "mini-app"
-                        ],
-                        [
-                            "approved"
-                        ]
-                    ]
-                },
-
-                {
-                    label:
-                        "Telegram Ads Campaign Management",
-
-                    price:
-                        200,
-
-                    keywords: [
-                        [
-                            "telegram"
-                        ],
-                        [
-                            "ads",
-                            "advertising"
-                        ],
-                        [
-                            "campaign"
-                        ],
-                        [
-                            "management",
-                            "manage"
-                        ]
-                    ]
-                },
-
-                {
-                    label:
-                        "Telegram Ad Copy Creation",
-
-                    price:
-                        30,
-
-                    keywords: [
-                        [
-                            "telegram"
-                        ],
-                        [
-                            "ad",
-                            "ads"
-                        ],
-                        [
-                            "copy"
-                        ],
-                        [
-                            "creation",
-                            "create"
-                        ]
-                    ]
-                }
-
-            ];
-
-
-            /* -----------------------------------------
-               Detect price column
-            ----------------------------------------- */
-
-            const firstService =
-                services[0];
-
-
-            let priceColumn = null;
-
-
-            if (
-                Object.prototype.hasOwnProperty.call(
-                    firstService,
-                    "price"
-                )
-            ) {
-
-                priceColumn =
-                    "price";
-
-            } else if (
-                Object.prototype.hasOwnProperty.call(
-                    firstService,
-                    "amount"
-                )
-            ) {
-
-                priceColumn =
-                    "amount";
-
-            }
-
-
-            if (!priceColumn) {
-
-                return res.status(500).json({
-
-                    success:
-                        false,
-
-                    message:
-                        "Could not find a price column in the services table."
-
-                });
-
-            }
-
-
-            /* -----------------------------------------
-               Update services
-            ----------------------------------------- */
-
-            const updated = [];
-
-            const notFound = [];
-
-
-            for (
-                const item
-                of priceUpdates
-            ) {
-
-                const service =
-                    findServiceByKeywords(
-                        services,
-                        item.keywords
-                    );
-
-
-                if (!service) {
-
-                    notFound.push({
-
-                        requested:
-                            item.label,
-
-                        price:
-                            item.price
-
-                    });
-
-                    continue;
-
-                }
-
-
-                const result =
-                    await pool.query(
-                        `
-                        UPDATE services
-                        SET ${priceColumn} = $1
-                        WHERE id = $2
-                        RETURNING *
-                        `,
-                        [
-                            item.price,
-                            service.id
-                        ]
-                    );
-
-
-                if (
-                    result.rows.length > 0
-                ) {
-
-                    updated.push({
-
-                        requested:
-                            item.label,
-
-                        database_name:
-                            service.name,
-
-                        price:
-                            result.rows[0][
-                                priceColumn
-                            ]
-
-                    });
-
-                }
-
-            }
-
-
-            /* -----------------------------------------
-               Response
-            ----------------------------------------- */
-
-            res.json({
-
-                success:
-                    true,
-
-                message:
-                    "Service price update completed.",
-
-                updated_count:
-                    updated.length,
-
-                not_found_count:
-                    notFound.length,
-
-                updated:
-                    updated,
-
-                not_found:
-                    notFound
-
-            });
-
-
-        } catch (error) {
-
-            console.error(
-                "Price update error:",
-                error
-            );
-
-
-            res.status(500).json({
-
-                success:
-                    false,
-
-                message:
-                    "Unable to update service prices.",
-
-                error:
-                    error.message
 
             });
 
@@ -804,24 +329,18 @@ app.get(
                     `
                 );
 
-
             res.json({
 
-                success:
-                    true,
+                success: true,
 
-                database:
-                    "PostgreSQL",
+                database: "PostgreSQL",
 
-                status:
-                    "connected",
+                status: "connected",
 
                 database_time:
-                    result.rows[0]
-                        .database_time
+                    result.rows[0].database_time
 
             });
-
 
         } catch (error) {
 
@@ -830,20 +349,509 @@ app.get(
                 error.message
             );
 
-
             res.status(500).json({
 
-                success:
-                    false,
+                success: false,
 
-                database:
-                    "PostgreSQL",
+                database: "PostgreSQL",
 
-                status:
-                    "disconnected",
+                status: "disconnected",
 
                 message:
                     "Database connection failed."
+
+            });
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+   ADMIN AUTHENTICATION
+===================================================== */
+
+app.post(
+    "/api/admin/login",
+    (req, res) => {
+
+        try {
+
+            const providedKey =
+                String(
+                    req.body?.key || ""
+                ).trim();
+
+            if (!providedKey) {
+
+                return res.status(400).json({
+
+                    success: false,
+
+                    message:
+                        "Admin key is required."
+
+                });
+
+            }
+
+
+            if (
+                providedKey !==
+                ADMIN_UPDATE_KEY
+            ) {
+
+                return res.status(401).json({
+
+                    success: false,
+
+                    message:
+                        "Invalid admin key."
+
+                });
+
+            }
+
+
+            const token =
+                jwt.sign(
+
+                    {
+                        role: "admin"
+                    },
+
+                    ADMIN_UPDATE_KEY,
+
+                    {
+                        expiresIn:
+                            "2h"
+                    }
+
+                );
+
+
+            return res.json({
+
+                success: true,
+
+                message:
+                    "Admin login successful.",
+
+                token,
+
+                expiresIn:
+                    "2h"
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Admin login error:",
+                error.message
+            );
+
+            return res.status(500).json({
+
+                success: false,
+
+                message:
+                    "Admin login failed."
+
+            });
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+   ADMIN AUTH MIDDLEWARE
+===================================================== */
+
+function requireAdmin(req, res, next) {
+
+    try {
+
+        const authHeader =
+            req.headers.authorization || "";
+
+        if (
+            !authHeader.startsWith(
+                "Bearer "
+            )
+        ) {
+
+            return res.status(401).json({
+
+                success: false,
+
+                message:
+                    "Admin authentication required."
+
+            });
+
+        }
+
+
+        const token =
+            authHeader.substring(7);
+
+
+        const decoded =
+            jwt.verify(
+                token,
+                ADMIN_UPDATE_KEY
+            );
+
+
+        if (
+            decoded.role !==
+            "admin"
+        ) {
+
+            return res.status(403).json({
+
+                success: false,
+
+                message:
+                    "Administrator access required."
+
+            });
+
+        }
+
+
+        req.admin = decoded;
+
+        next();
+
+    } catch (error) {
+
+        return res.status(401).json({
+
+            success: false,
+
+            message:
+                "Admin session expired or invalid."
+
+        });
+
+    }
+
+}
+
+
+/* =====================================================
+   ADMIN — GET SERVICES
+===================================================== */
+
+app.get(
+    "/api/admin/services",
+    requireAdmin,
+    async (req, res) => {
+
+        try {
+
+            const result =
+                await pool.query(
+                    `
+                    SELECT
+                        id,
+                        name,
+                        description,
+                        price,
+                        currency,
+                        price_type,
+                        category,
+                        active
+                    FROM services
+                    ORDER BY id ASC
+                    `
+                );
+
+
+            res.json({
+
+                success: true,
+
+                count:
+                    result.rows.length,
+
+                services:
+                    result.rows
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Admin services error:",
+                error.message
+            );
+
+            res.status(500).json({
+
+                success: false,
+
+                message:
+                    "Unable to load admin services."
+
+            });
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+   ADMIN — UPDATE PRICE
+===================================================== */
+
+app.patch(
+    "/api/admin/services/:id/price",
+    requireAdmin,
+    async (req, res) => {
+
+        const id =
+            Number(req.params.id);
+
+        const price =
+            Number(req.body?.price);
+
+
+        if (
+            !Number.isInteger(id) ||
+            id <= 0
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Invalid service ID."
+
+            });
+
+        }
+
+
+        if (
+            !Number.isFinite(price) ||
+            price < 0
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Price must be a valid positive number."
+
+            });
+
+        }
+
+
+        try {
+
+            const result =
+                await pool.query(
+                    `
+                    UPDATE services
+                    SET price = $1
+                    WHERE id = $2
+                    RETURNING
+                        id,
+                        name,
+                        price,
+                        currency,
+                        active
+                    `,
+                    [
+                        price.toFixed(2),
+                        id
+                    ]
+                );
+
+
+            if (
+                result.rows.length === 0
+            ) {
+
+                return res.status(404).json({
+
+                    success: false,
+
+                    message:
+                        "Service not found."
+
+                });
+
+            }
+
+
+            console.log(
+                `Admin updated service ${id} price to $${price.toFixed(2)}`
+            );
+
+
+            res.json({
+
+                success: true,
+
+                message:
+                    "Service price updated successfully.",
+
+                service:
+                    result.rows[0]
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Admin price update error:",
+                error.message
+            );
+
+            res.status(500).json({
+
+                success: false,
+
+                message:
+                    "Unable to update service price."
+
+            });
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+   ADMIN — UPDATE SERVICE STATUS
+===================================================== */
+
+app.patch(
+    "/api/admin/services/:id/status",
+    requireAdmin,
+    async (req, res) => {
+
+        const id =
+            Number(req.params.id);
+
+        const active =
+            req.body?.active;
+
+
+        if (
+            !Number.isInteger(id) ||
+            id <= 0
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Invalid service ID."
+
+            });
+
+        }
+
+
+        if (
+            typeof active !==
+            "boolean"
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Active must be true or false."
+
+            });
+
+        }
+
+
+        try {
+
+            const result =
+                await pool.query(
+                    `
+                    UPDATE services
+                    SET active = $1
+                    WHERE id = $2
+                    RETURNING
+                        id,
+                        name,
+                        price,
+                        currency,
+                        active
+                    `,
+                    [
+                        active,
+                        id
+                    ]
+                );
+
+
+            if (
+                result.rows.length === 0
+            ) {
+
+                return res.status(404).json({
+
+                    success: false,
+
+                    message:
+                        "Service not found."
+
+                });
+
+            }
+
+
+            console.log(
+                `Admin changed service ${id} active status to ${active}`
+            );
+
+
+            res.json({
+
+                success: true,
+
+                message:
+                    "Service status updated successfully.",
+
+                service:
+                    result.rows[0]
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Admin status update error:",
+                error.message
+            );
+
+            res.status(500).json({
+
+                success: false,
+
+                message:
+                    "Unable to update service status."
 
             });
 
@@ -862,8 +870,7 @@ app.use(
 
         res.status(404).json({
 
-            success:
-                false,
+            success: false,
 
             message:
                 "API endpoint not found.",
@@ -901,8 +908,7 @@ app.use(
             error.status || 500
         ).json({
 
-            success:
-                false,
+            success: false,
 
             message:
                 error.message ||
@@ -945,11 +951,9 @@ async function checkDatabase() {
         "Database: CONNECTED"
     );
 
-
     console.log(
         `Database time: ${result.rows[0].database_time.toISOString()}`
     );
-
 
     console.log(
         "========================================"
@@ -968,20 +972,8 @@ async function startServer() {
 
     try {
 
-        /*
-        -------------------------------------------------
-        Test PostgreSQL before starting HTTP server
-        -------------------------------------------------
-        */
-
         await checkDatabase();
 
-
-        /*
-        -------------------------------------------------
-        Start Express
-        -------------------------------------------------
-        */
 
         const server =
             app.listen(
@@ -1014,6 +1006,10 @@ async function startServer() {
                     );
 
                     console.log(
+                        "Admin API: ENABLED"
+                    );
+
+                    console.log(
                         "Status: ONLINE"
                     );
 
@@ -1026,12 +1022,6 @@ async function startServer() {
                 }
             );
 
-
-        /*
-        -------------------------------------------------
-        Graceful shutdown
-        -------------------------------------------------
-        */
 
         const shutdown =
             async (signal) => {
@@ -1050,19 +1040,15 @@ async function startServer() {
 
                             await pool.end();
 
-
                             console.log(
                                 "PostgreSQL connection pool closed."
                             );
-
 
                             console.log(
                                 "Server shutdown complete."
                             );
 
-
                             process.exit(0);
-
 
                         } catch (error) {
 
@@ -1070,7 +1056,6 @@ async function startServer() {
                                 "Error during shutdown:",
                                 error.message
                             );
-
 
                             process.exit(1);
 
@@ -1086,7 +1071,6 @@ async function startServer() {
             "SIGTERM",
             () => shutdown("SIGTERM")
         );
-
 
         process.once(
             "SIGINT",
@@ -1120,15 +1104,6 @@ async function startServer() {
 
         console.error("");
 
-
-        /*
-        -------------------------------------------------
-        Railway will restart the application when
-        PostgreSQL or another required startup service
-        is unavailable.
-        -------------------------------------------------
-        */
-
         process.exit(1);
 
     }
@@ -1136,15 +1111,7 @@ async function startServer() {
 }
 
 
-/* =====================================================
-   START APPLICATION
-===================================================== */
-
 startServer();
 
-
-/* =====================================================
-   EXPORT APP
-===================================================== */
 
 module.exports = app;
