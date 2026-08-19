@@ -2,7 +2,7 @@
    TIMIFXX MARKETING
    Telegram Ads Marketing Website
    Main JavaScript
-   Version: 1.1.0
+   Version: 2.0.0
    ========================================================= */
 
 "use strict";
@@ -34,406 +34,49 @@ document.addEventListener("DOMContentLoaded", () => {
        SMOOTH SCROLLING
     ===================================================== */
 
-    const internalLinks =
-        document.querySelectorAll(
-            'a[href^="#"]'
-        );
-
-
-    internalLinks.forEach((link) => {
-
-        link.addEventListener("click", (event) => {
-
-            const targetId =
-                link.getAttribute("href");
-
-
-            if (
-                !targetId ||
-                targetId === "#"
-            ) {
-                return;
-            }
-
-
-            const target =
-                document.querySelector(targetId);
-
-
-            if (!target) {
-                return;
-            }
-
-
-            event.preventDefault();
-
-
-            const navbar =
-                document.querySelector(".navbar");
-
-
-            const navbarHeight =
-                navbar
-                    ? navbar.offsetHeight
-                    : 0;
-
-
-            const targetPosition =
-                target.getBoundingClientRect().top +
-                window.scrollY -
-                navbarHeight;
-
-
-            window.scrollTo({
-
-                top: targetPosition,
-
-                behavior: "smooth"
-
-            });
-
-        });
-
-    });
+    initializeSmoothScrolling();
 
 
     /* =====================================================
-       NAVBAR SCROLL EFFECT
+       NAVBAR
     ===================================================== */
 
-    const navbar =
-        document.querySelector(".navbar");
-
-
-    function updateNavbar() {
-
-        if (!navbar) {
-            return;
-        }
-
-
-        if (window.scrollY > 30) {
-
-            navbar.style.background =
-                "rgba(3, 9, 18, 0.95)";
-
-
-            navbar.style.boxShadow =
-                "0 10px 40px rgba(0, 0, 0, 0.22)";
-
-        } else {
-
-            navbar.style.background =
-                "rgba(5, 11, 22, 0.82)";
-
-
-            navbar.style.boxShadow =
-                "none";
-
-        }
-
-    }
-
-
-    window.addEventListener(
-        "scroll",
-        updateNavbar,
-        {
-            passive: true
-        }
-    );
-
-
-    updateNavbar();
+    initializeNavbar();
 
 
     /* =====================================================
        ACTIVE NAVIGATION
     ===================================================== */
 
-    const sections =
-        document.querySelectorAll(
-            "main section[id]"
-        );
-
-
-    const navLinks =
-        document.querySelectorAll(
-            '.nav-menu a[href^="#"]'
-        );
-
-
-    function updateActiveNavigation() {
-
-        if (
-            !sections.length ||
-            !navLinks.length
-        ) {
-            return;
-        }
-
-
-        const scrollPosition =
-            window.scrollY +
-            window.innerHeight * 0.35;
-
-
-        let currentSection = "";
-
-
-        sections.forEach((section) => {
-
-            const top =
-                section.offsetTop;
-
-
-            const bottom =
-                top +
-                section.offsetHeight;
-
-
-            if (
-                scrollPosition >= top &&
-                scrollPosition < bottom
-            ) {
-
-                currentSection =
-                    section.id;
-
-            }
-
-        });
-
-
-        navLinks.forEach((link) => {
-
-            const target =
-                link.getAttribute("href");
-
-
-            link.classList.remove("active");
-
-
-            if (
-                currentSection &&
-                target ===
-                    `#${currentSection}`
-            ) {
-
-                link.classList.add("active");
-
-            }
-
-        });
-
-    }
-
-
-    window.addEventListener(
-        "scroll",
-        updateActiveNavigation,
-        {
-            passive: true
-        }
-    );
-
-
-    updateActiveNavigation();
+    initializeActiveNavigation();
 
 
     /* =====================================================
-       SCROLL REVEAL
+       GENERAL SCROLL REVEAL
     ===================================================== */
 
-    const revealElements =
-        document.querySelectorAll(
-            ".service-card, " +
-            ".feature, " +
-            ".about-card, " +
-            ".contact-box"
-        );
-
-
-    if (
-        "IntersectionObserver" in window
-    ) {
-
-        const observer =
-            new IntersectionObserver(
-                (entries, observerInstance) => {
-
-                    entries.forEach((entry) => {
-
-                        if (
-                            !entry.isIntersecting
-                        ) {
-                            return;
-                        }
-
-
-                        entry.target.classList.add(
-                            "visible"
-                        );
-
-
-                        observerInstance.unobserve(
-                            entry.target
-                        );
-
-                    });
-
-                },
-                {
-                    threshold: 0.12
-                }
-            );
-
-
-        revealElements.forEach((element) => {
-
-            element.classList.add(
-                "scroll-reveal"
-            );
-
-
-            observer.observe(element);
-
-        });
-
-    } else {
-
-        revealElements.forEach((element) => {
-
-            element.classList.add(
-                "visible"
-            );
-
-        });
-
-    }
+    initializeGeneralReveal();
 
 
     /* =====================================================
-       TELEGRAM BUTTON FEEDBACK
+       TELEGRAM TRACKING
     ===================================================== */
 
-    const telegramLinks =
-        document.querySelectorAll(
-            'a[href*="t.me/timifxx203"]'
-        );
-
-
-    telegramLinks.forEach((link) => {
-
-        link.addEventListener("click", () => {
-
-            try {
-
-                sessionStorage.setItem(
-                    "lastTelegramVisit",
-                    new Date().toISOString()
-                );
-
-            } catch (error) {
-
-                console.log(
-                    "Session storage unavailable."
-                );
-
-            }
-
-        });
-
-    });
+    initializeTelegramTracking();
 
 
     /* =====================================================
        BUTTON RIPPLE
     ===================================================== */
 
-    const buttons =
-        document.querySelectorAll(
-            ".primary-button, " +
-            ".secondary-button, " +
-            ".service-button, " +
-            ".contact-button, " +
-            ".nav-button, " +
-            ".card-button"
-        );
-
-
-    buttons.forEach((button) => {
-
-        button.addEventListener(
-            "pointerdown",
-            (event) => {
-
-                const ripple =
-                    document.createElement("span");
-
-
-                ripple.className =
-                    "button-ripple";
-
-
-                const rect =
-                    button.getBoundingClientRect();
-
-
-                const size =
-                    Math.max(
-                        rect.width,
-                        rect.height
-                    );
-
-
-                ripple.style.width =
-                    `${size}px`;
-
-
-                ripple.style.height =
-                    `${size}px`;
-
-
-                ripple.style.left =
-                    `${event.clientX - rect.left - size / 2}px`;
-
-
-                ripple.style.top =
-                    `${event.clientY - rect.top - size / 2}px`;
-
-
-                button.appendChild(ripple);
-
-
-                window.setTimeout(() => {
-
-                    ripple.remove();
-
-                }, 600);
-
-            }
-        );
-
-    });
+    initializeButtonRipples();
 
 
     /* =====================================================
        CURRENT YEAR
     ===================================================== */
 
-    const yearElements =
-        document.querySelectorAll(
-            "[data-current-year]"
-        );
-
-
-    yearElements.forEach((element) => {
-
-        element.textContent =
-            new Date().getFullYear();
-
-    });
+    initializeCurrentYear();
 
 
     /* =====================================================
@@ -462,7 +105,6 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log(
         "Telegram Ads Marketing Website"
     );
-
 
 });
 
@@ -502,10 +144,13 @@ async function loadServices() {
                 `${API_BASE_URL}/api/services`,
                 {
                     method: "GET",
+
                     headers: {
                         "Accept":
                             "application/json"
-                    }
+                    },
+
+                    cache: "no-store"
                 }
             );
 
@@ -536,13 +181,29 @@ async function loadServices() {
         }
 
 
+        /*
+         Only display active services.
+        */
+
+        const activeServices =
+            data.services.filter(
+                service =>
+                    service.active === true
+            );
+
+
         console.log(
             `Services loaded successfully: ${data.services.length}`
         );
 
 
+        console.log(
+            `Active services displayed: ${activeServices.length}`
+        );
+
+
         renderServices(
-            data.services
+            activeServices
         );
 
 
@@ -555,7 +216,7 @@ async function loadServices() {
 
 
         /*
-         Do not destroy the existing HTML services
+         Do not destroy the existing HTML
          if the Railway API is temporarily unavailable.
         */
 
@@ -572,7 +233,9 @@ async function loadServices() {
    RENDER SERVICES
 ========================================================= */
 
-function renderServices(services) {
+function renderServices(
+    services
+) {
 
     const servicesGrid =
         document.querySelector(
@@ -581,15 +244,21 @@ function renderServices(services) {
 
 
     if (!servicesGrid) {
+
         return;
+
     }
 
 
     if (!services.length) {
 
-        console.warn(
-            "No services were returned by the API."
-        );
+        servicesGrid.innerHTML = `
+            <div class="services-empty">
+                <p>
+                    No services are currently available.
+                </p>
+            </div>
+        `;
 
         return;
 
@@ -597,32 +266,35 @@ function renderServices(services) {
 
 
     /*
-     Convert database services into website cards.
+     Convert database services into
+     website service cards.
     */
 
     servicesGrid.innerHTML =
         services
-            .map((service, index) => {
+            .map(
+                (service, index) => {
 
-                return createServiceCard(
-                    service,
-                    index
-                );
+                    return createServiceCard(
+                        service,
+                        index
+                    );
 
-            })
+                }
+            )
             .join("");
 
 
     /*
-     Re-enable scroll reveal for the newly
-     created service cards.
+     Re-enable scroll reveal for
+     newly created service cards.
     */
 
     initializeServiceReveal();
 
 
     /*
-     Re-enable Telegram click tracking.
+     Re-enable Telegram tracking.
     */
 
     initializeTelegramTracking();
@@ -661,17 +333,35 @@ function createServiceCard(
         "Telegram advertising solution ready for your needs.";
 
 
+    /*
+     Convert database price into
+     a clean two-decimal format.
+    */
+
+    const numericPrice =
+        Number(
+            service.price || 0
+        );
+
+
     const price =
-        service.price !== undefined &&
-        service.price !== null
-            ? service.price
-            : "0";
+        Number.isFinite(
+            numericPrice
+        )
+            ? numericPrice.toFixed(2)
+            : "0.00";
 
 
     const icon =
         service.icon ||
         getServiceIcon(name);
 
+
+    /*
+     First active service is featured
+     unless the database explicitly
+     provides a popular flag.
+    */
 
     const isPopular =
         Boolean(
@@ -680,6 +370,11 @@ function createServiceCard(
             index === 0
         );
 
+
+    /*
+     Telegram order message uses
+     the CURRENT database price.
+    */
 
     const orderMessage =
         encodeURIComponent(
@@ -790,7 +485,9 @@ I'm contacting you from your website and would like to proceed with the order.`
    SERVICE ICON HELPER
 ========================================================= */
 
-function getServiceIcon(name) {
+function getServiceIcon(
+    name
+) {
 
     const serviceName =
         String(name)
@@ -798,32 +495,52 @@ function getServiceIcon(name) {
 
 
     if (
-        serviceName.includes("channel")
+        serviceName.includes(
+            "channel"
+        )
     ) {
+
         return "📢";
+
     }
 
 
     if (
-        serviceName.includes("bot")
+        serviceName.includes(
+            "bot"
+        )
     ) {
+
         return "🤖";
+
     }
 
 
     if (
-        serviceName.includes("miniapp") ||
-        serviceName.includes("mini app")
+        serviceName.includes(
+            "miniapp"
+        ) ||
+        serviceName.includes(
+            "mini app"
+        )
     ) {
+
         return "📱";
+
     }
 
 
     if (
-        serviceName.includes("ads") ||
-        serviceName.includes("advert")
+        serviceName.includes(
+            "ads"
+        ) ||
+        serviceName.includes(
+            "advert"
+        )
     ) {
+
         return "📣";
+
     }
 
 
@@ -836,14 +553,380 @@ function getServiceIcon(name) {
    HTML ESCAPE
 ========================================================= */
 
-function escapeHtml(value) {
+function escapeHtml(
+    value
+) {
 
     return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+
+}
+
+
+/* =========================================================
+   SMOOTH SCROLLING
+========================================================= */
+
+function initializeSmoothScrolling() {
+
+    const internalLinks =
+        document.querySelectorAll(
+            'a[href^="#"]'
+        );
+
+
+    internalLinks.forEach(
+        (link) => {
+
+            link.addEventListener(
+                "click",
+                (event) => {
+
+                    const targetId =
+                        link.getAttribute(
+                            "href"
+                        );
+
+
+                    if (
+                        !targetId ||
+                        targetId === "#"
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    const target =
+                        document.querySelector(
+                            targetId
+                        );
+
+
+                    if (!target) {
+
+                        return;
+
+                    }
+
+
+                    event.preventDefault();
+
+
+                    const navbar =
+                        document.querySelector(
+                            ".navbar"
+                        );
+
+
+                    const navbarHeight =
+                        navbar
+                            ? navbar.offsetHeight
+                            : 0;
+
+
+                    const targetPosition =
+                        target
+                            .getBoundingClientRect()
+                            .top +
+                        window.scrollY -
+                        navbarHeight;
+
+
+                    window.scrollTo({
+
+                        top:
+                            targetPosition,
+
+                        behavior:
+                            "smooth"
+
+                    });
+
+                }
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   NAVBAR SCROLL EFFECT
+========================================================= */
+
+function initializeNavbar() {
+
+    const navbar =
+        document.querySelector(
+            ".navbar"
+        );
+
+
+    if (!navbar) {
+
+        return;
+
+    }
+
+
+    function updateNavbar() {
+
+        if (
+            window.scrollY > 30
+        ) {
+
+            navbar.style.background =
+                "rgba(3, 9, 18, 0.95)";
+
+
+            navbar.style.boxShadow =
+                "0 10px 40px rgba(0, 0, 0, 0.22)";
+
+        } else {
+
+            navbar.style.background =
+                "rgba(5, 11, 22, 0.82)";
+
+
+            navbar.style.boxShadow =
+                "none";
+
+        }
+
+    }
+
+
+    window.addEventListener(
+        "scroll",
+        updateNavbar,
+        {
+            passive: true
+        }
+    );
+
+
+    updateNavbar();
+
+}
+
+
+/* =========================================================
+   ACTIVE NAVIGATION
+========================================================= */
+
+function initializeActiveNavigation() {
+
+    const sections =
+        document.querySelectorAll(
+            "main section[id]"
+        );
+
+
+    const navLinks =
+        document.querySelectorAll(
+            '.nav-menu a[href^="#"]'
+        );
+
+
+    if (
+        !sections.length ||
+        !navLinks.length
+    ) {
+
+        return;
+
+    }
+
+
+    function updateActiveNavigation() {
+
+        const scrollPosition =
+            window.scrollY +
+            window.innerHeight * 0.35;
+
+
+        let currentSection = "";
+
+
+        sections.forEach(
+            (section) => {
+
+                const top =
+                    section.offsetTop;
+
+
+                const bottom =
+                    top +
+                    section.offsetHeight;
+
+
+                if (
+                    scrollPosition >= top &&
+                    scrollPosition < bottom
+                ) {
+
+                    currentSection =
+                        section.id;
+
+                }
+
+            }
+        );
+
+
+        navLinks.forEach(
+            (link) => {
+
+                const target =
+                    link.getAttribute(
+                        "href"
+                    );
+
+
+                link.classList.remove(
+                    "active"
+                );
+
+
+                if (
+                    currentSection &&
+                    target ===
+                        `#${currentSection}`
+                ) {
+
+                    link.classList.add(
+                        "active"
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+
+    window.addEventListener(
+        "scroll",
+        updateActiveNavigation,
+        {
+            passive: true
+        }
+    );
+
+
+    updateActiveNavigation();
+
+}
+
+
+/* =========================================================
+   GENERAL SCROLL REVEAL
+========================================================= */
+
+function initializeGeneralReveal() {
+
+    const revealElements =
+        document.querySelectorAll(
+            ".feature, " +
+            ".about-card, " +
+            ".contact-box"
+        );
+
+
+    if (
+        !("IntersectionObserver" in window)
+    ) {
+
+        revealElements.forEach(
+            (element) => {
+
+                element.classList.add(
+                    "visible"
+                );
+
+            }
+        );
+
+        return;
+
+    }
+
+
+    const observer =
+        new IntersectionObserver(
+            (
+                entries,
+                observerInstance
+            ) => {
+
+                entries.forEach(
+                    (entry) => {
+
+                        if (
+                            !entry.isIntersecting
+                        ) {
+
+                            return;
+
+                        }
+
+
+                        entry.target.classList.add(
+                            "visible"
+                        );
+
+
+                        observerInstance.unobserve(
+                            entry.target
+                        );
+
+                    }
+                );
+
+            },
+            {
+                threshold: 0.12
+            }
+        );
+
+
+    revealElements.forEach(
+        (element) => {
+
+            element.classList.add(
+                "scroll-reveal"
+            );
+
+
+            observer.observe(
+                element
+            );
+
+        }
+    );
 
 }
 
@@ -864,13 +947,15 @@ function initializeServiceReveal() {
         !("IntersectionObserver" in window)
     ) {
 
-        revealElements.forEach((element) => {
+        revealElements.forEach(
+            (element) => {
 
-            element.classList.add(
-                "visible"
-            );
+                element.classList.add(
+                    "visible"
+                );
 
-        });
+            }
+        );
 
         return;
 
@@ -879,27 +964,34 @@ function initializeServiceReveal() {
 
     const observer =
         new IntersectionObserver(
-            (entries, observerInstance) => {
+            (
+                entries,
+                observerInstance
+            ) => {
 
-                entries.forEach((entry) => {
+                entries.forEach(
+                    (entry) => {
 
-                    if (
-                        !entry.isIntersecting
-                    ) {
-                        return;
+                        if (
+                            !entry.isIntersecting
+                        ) {
+
+                            return;
+
+                        }
+
+
+                        entry.target.classList.add(
+                            "visible"
+                        );
+
+
+                        observerInstance.unobserve(
+                            entry.target
+                        );
+
                     }
-
-
-                    entry.target.classList.add(
-                        "visible"
-                    );
-
-
-                    observerInstance.unobserve(
-                        entry.target
-                    );
-
-                });
+                );
 
             },
             {
@@ -908,16 +1000,20 @@ function initializeServiceReveal() {
         );
 
 
-    revealElements.forEach((element) => {
+    revealElements.forEach(
+        (element) => {
 
-        element.classList.add(
-            "scroll-reveal"
-        );
+            element.classList.add(
+                "scroll-reveal"
+            );
 
 
-        observer.observe(element);
+            observer.observe(
+                element
+            );
 
-    });
+        }
+    );
 
 }
 
@@ -934,49 +1030,57 @@ function initializeTelegramTracking() {
         );
 
 
-    telegramLinks.forEach((link) => {
+    telegramLinks.forEach(
+        (link) => {
 
-        /*
-         Prevent duplicate event listeners.
-        */
+            /*
+             Prevent duplicate listeners.
+            */
 
-        if (
-            link.dataset.telegramTracked === "true"
-        ) {
-            return;
-        }
+            if (
+                link.dataset.telegramTracked ===
+                "true"
+            ) {
 
-
-        link.dataset.telegramTracked =
-            "true";
-
-
-        link.addEventListener("click", () => {
-
-            try {
-
-                sessionStorage.setItem(
-                    "lastTelegramVisit",
-                    new Date().toISOString()
-                );
-
-            } catch (error) {
-
-                console.log(
-                    "Session storage unavailable."
-                );
+                return;
 
             }
 
-        });
 
-    });
+            link.dataset.telegramTracked =
+                "true";
+
+
+            link.addEventListener(
+                "click",
+                () => {
+
+                    try {
+
+                        sessionStorage.setItem(
+                            "lastTelegramVisit",
+                            new Date().toISOString()
+                        );
+
+                    } catch (error) {
+
+                        console.log(
+                            "Session storage unavailable."
+                        );
+
+                    }
+
+                }
+            );
+
+        }
+    );
 
 }
 
 
 /* =========================================================
-   BUTTON RIPPLE INITIALIZER
+   BUTTON RIPPLE
 ========================================================= */
 
 function initializeButtonRipples() {
@@ -992,74 +1096,118 @@ function initializeButtonRipples() {
         );
 
 
-    buttons.forEach((button) => {
+    buttons.forEach(
+        (button) => {
 
-        /*
-         Prevent duplicate event listeners.
-        */
+            /*
+             Prevent duplicate listeners.
+            */
 
-        if (
-            button.dataset.rippleReady === "true"
-        ) {
-            return;
-        }
+            if (
+                button.dataset.rippleReady ===
+                "true"
+            ) {
 
+                return;
 
-        button.dataset.rippleReady =
-            "true";
-
-
-        button.addEventListener(
-            "pointerdown",
-            (event) => {
-
-                const ripple =
-                    document.createElement("span");
+            }
 
 
-                ripple.className =
-                    "button-ripple";
+            button.dataset.rippleReady =
+                "true";
 
 
-                const rect =
-                    button.getBoundingClientRect();
+            button.addEventListener(
+                "pointerdown",
+                (event) => {
+
+                    const ripple =
+                        document.createElement(
+                            "span"
+                        );
 
 
-                const size =
-                    Math.max(
-                        rect.width,
-                        rect.height
+                    ripple.className =
+                        "button-ripple";
+
+
+                    const rect =
+                        button.getBoundingClientRect();
+
+
+                    const size =
+                        Math.max(
+                            rect.width,
+                            rect.height
+                        );
+
+
+                    ripple.style.width =
+                        `${size}px`;
+
+
+                    ripple.style.height =
+                        `${size}px`;
+
+
+                    ripple.style.left =
+                        `${
+                            event.clientX -
+                            rect.left -
+                            size / 2
+                        }px`;
+
+
+                    ripple.style.top =
+                        `${
+                            event.clientY -
+                            rect.top -
+                            size / 2
+                        }px`;
+
+
+                    button.appendChild(
+                        ripple
                     );
 
 
-                ripple.style.width =
-                    `${size}px`;
+                    window.setTimeout(
+                        () => {
+
+                            ripple.remove();
+
+                        },
+                        600
+                    );
+
+                }
+            );
+
+        }
+    );
+
+}
 
 
-                ripple.style.height =
-                    `${size}px`;
+/* =========================================================
+   CURRENT YEAR
+========================================================= */
 
+function initializeCurrentYear() {
 
-                ripple.style.left =
-                    `${event.clientX - rect.left - size / 2}px`;
-
-
-                ripple.style.top =
-                    `${event.clientY - rect.top - size / 2}px`;
-
-
-                button.appendChild(ripple);
-
-
-                window.setTimeout(() => {
-
-                    ripple.remove();
-
-                }, 600);
-
-            }
+    const yearElements =
+        document.querySelectorAll(
+            "[data-current-year]"
         );
 
-    });
+
+    yearElements.forEach(
+        (element) => {
+
+            element.textContent =
+                new Date().getFullYear();
+
+        }
+    );
 
 }
