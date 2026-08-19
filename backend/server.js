@@ -3,7 +3,7 @@
 /*
 =========================================================
  TimiFxx Marketing Backend
- Version: 2.1.0
+ Version: 2.2.0
 
  Features:
  - PostgreSQL connection
@@ -13,6 +13,7 @@
  - Secure admin login
  - Price management
  - Service activation/deactivation
+ - Public Order Creation API
  - Orders API
  - Order details API
  - Order status management
@@ -56,7 +57,6 @@ const FRONTEND_URL =
 
 const ADMIN_UPDATE_KEY =
     process.env.ADMIN_UPDATE_KEY;
-
 
 if (!ADMIN_UPDATE_KEY) {
 
@@ -128,7 +128,7 @@ app.get("/", (req, res) => {
             "TimiFxx Marketing",
 
         version:
-            "2.1.0",
+            "2.2.0",
 
         status:
             "online",
@@ -232,7 +232,7 @@ app.get(
                 "TimiFxx Marketing",
 
             version:
-                "2.1.0",
+                "2.2.0",
 
             status:
                 "online",
@@ -250,6 +250,9 @@ app.get(
 
                 services:
                     "/api/services",
+
+                createOrder:
+                    "POST /api/orders",
 
                 databaseTest:
                     "/api/database-test",
@@ -354,6 +357,452 @@ app.get(
 
                 message:
                     "Unable to load services."
+
+            });
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+   PUBLIC — CREATE ORDER
+===================================================== */
+
+app.post(
+    "/api/orders",
+    async (req, res) => {
+
+        try {
+
+            /*
+             ------------------------------------------------
+             Read customer information
+             ------------------------------------------------
+            */
+
+            const serviceId =
+                Number(
+                    req.body?.service_id
+                );
+
+            const contactMethod =
+                String(
+                    req.body?.contact_method || "telegram"
+                )
+                    .trim()
+                    .toLowerCase();
+
+            const telegramUsername =
+                String(
+                    req.body?.telegram_username || ""
+                )
+                    .trim()
+                    .replace(/^@/, "");
+
+            const whatsappNumber =
+                String(
+                    req.body?.whatsapp_number || ""
+                )
+                    .trim();
+
+            const customerMessage =
+                String(
+                    req.body?.customer_message || ""
+                )
+                    .trim();
+
+
+            /*
+             ------------------------------------------------
+             Validate service ID
+             ------------------------------------------------
+            */
+
+            if (
+                !Number.isInteger(serviceId) ||
+                serviceId <= 0
+            ) {
+
+                return res.status(400).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "A valid service ID is required."
+
+                });
+
+            }
+
+
+            /*
+             ------------------------------------------------
+             Validate contact method
+             ------------------------------------------------
+            */
+
+            const allowedContactMethods = [
+                "telegram",
+                "whatsapp"
+            ];
+
+
+            if (
+                !allowedContactMethods.includes(
+                    contactMethod
+                )
+            ) {
+
+                return res.status(400).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Invalid contact method."
+
+                });
+
+            }
+
+
+            /*
+             ------------------------------------------------
+             Validate Telegram contact
+             ------------------------------------------------
+            */
+
+            if (
+                contactMethod === "telegram" &&
+                telegramUsername.length > 100
+            ) {
+
+                return res.status(400).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Telegram username is too long."
+
+                });
+
+            }
+
+
+            /*
+             ------------------------------------------------
+             Validate WhatsApp contact
+             ------------------------------------------------
+            */
+
+            if (
+                contactMethod === "whatsapp" &&
+                whatsappNumber.length > 30
+            ) {
+
+                return res.status(400).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "WhatsApp number is too long."
+
+                });
+
+            }
+
+
+            /*
+             ------------------------------------------------
+             Limit customer message
+             ------------------------------------------------
+            */
+
+            if (
+                customerMessage.length > 5000
+            ) {
+
+                return res.status(400).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Customer message is too long."
+
+                });
+
+            }
+
+
+            /*
+             ------------------------------------------------
+             Find active service
+             ------------------------------------------------
+
+             IMPORTANT:
+             The price comes from PostgreSQL.
+
+             The customer cannot submit their own price.
+            */
+
+            const serviceResult =
+                await pool.query(
+                    `
+                    SELECT
+                        id,
+                        name,
+                        description,
+                        price,
+                        currency,
+                        price_type,
+                        category,
+                        active
+                    FROM services
+                    WHERE id = $1
+                      AND active = TRUE
+                    LIMIT 1
+                    `,
+                    [
+                        serviceId
+                    ]
+                );
+
+
+            if (
+                serviceResult.rows.length === 0
+            ) {
+
+                return res.status(404).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Service not found or is currently unavailable."
+
+                });
+
+            }
+
+
+            const service =
+                serviceResult.rows[0];
+
+
+            /*
+             ------------------------------------------------
+             Generate unique order number
+             ------------------------------------------------
+            */
+
+            let orderNumber;
+
+            let orderCreated = false;
+
+            let createdOrder;
+
+
+            for (
+                let attempt = 0;
+                attempt < 5;
+                attempt++
+            ) {
+
+                const timestamp =
+                    Date.now()
+                        .toString()
+                        .slice(-8);
+
+                const random =
+                    Math.floor(
+                        1000 +
+                        Math.random() * 9000
+                    );
+
+
+                orderNumber =
+                    `TMF-${timestamp}-${random}`;
+
+
+                try {
+
+                    const orderResult =
+                        await pool.query(
+                            `
+                            INSERT INTO orders
+                            (
+                                order_number,
+                                service_id,
+                                price,
+                                currency,
+                                status,
+                                contact_method,
+                                customer_message,
+                                telegram_username,
+                                whatsapp_number
+                            )
+                            VALUES
+                            (
+                                $1,
+                                $2,
+                                $3,
+                                $4,
+                                'Pending',
+                                $5,
+                                $6,
+                                $7,
+                                $8
+                            )
+                            RETURNING
+                                id,
+                                order_number,
+                                service_id,
+                                price,
+                                currency,
+                                status,
+                                contact_method,
+                                customer_message,
+                                telegram_username,
+                                whatsapp_number,
+                                created_at
+                            `,
+                            [
+                                orderNumber,
+                                service.id,
+                                service.price,
+                                service.currency,
+                                contactMethod,
+                                customerMessage || null,
+                                telegramUsername || null,
+                                whatsappNumber || null
+                            ]
+                        );
+
+
+                    createdOrder =
+                        orderResult.rows[0];
+
+                    orderCreated =
+                        true;
+
+                    break;
+
+                } catch (error) {
+
+                    /*
+                     Retry only if the generated
+                     order number collided.
+                    */
+
+                    if (
+                        error.code === "23505"
+                    ) {
+
+                        continue;
+
+                    }
+
+                    throw error;
+
+                }
+
+            }
+
+
+            if (!orderCreated) {
+
+                return res.status(500).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Unable to generate a unique order number."
+
+                });
+
+            }
+
+
+            /*
+             ------------------------------------------------
+             Log successful order
+             ------------------------------------------------
+            */
+
+            console.log(
+                `New order created: ${createdOrder.order_number} - ${service.name} - $${Number(createdOrder.price).toFixed(2)}`
+            );
+
+
+            /*
+             ------------------------------------------------
+             Return order
+             ------------------------------------------------
+            */
+
+            return res.status(201).json({
+
+                success:
+                    true,
+
+                message:
+                    "Order created successfully.",
+
+                order: {
+
+                    id:
+                        createdOrder.id,
+
+                    order_number:
+                        createdOrder.order_number,
+
+                    service_id:
+                        createdOrder.service_id,
+
+                    service_name:
+                        service.name,
+
+                    price:
+                        createdOrder.price,
+
+                    currency:
+                        createdOrder.currency,
+
+                    status:
+                        createdOrder.status,
+
+                    contact_method:
+                        createdOrder.contact_method,
+
+                    created_at:
+                        createdOrder.created_at
+
+                }
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Create order error:",
+                error
+            );
+
+
+            return res.status(500).json({
+
+                success:
+                    false,
+
+                message:
+                    "Unable to create order."
 
             });
 
@@ -1618,6 +2067,10 @@ async function startServer() {
 
                     console.log(
                         "Orders API: ENABLED"
+                    );
+
+                    console.log(
+                        "Order Creation: ENABLED"
                     );
 
                     console.log(
