@@ -135,7 +135,7 @@ VALUES
 (
     'Already Approved Channel',
     'Already approved Telegram channel service.',
-    100.00,
+    150.00,
     'USD',
     'fixed',
     'Telegram Ads'
@@ -144,7 +144,7 @@ VALUES
 (
     'Already Approved Bot',
     'Already approved Telegram bot service.',
-    60.00,
+    70.00,
     'USD',
     'fixed',
     'Telegram Ads'
@@ -153,7 +153,7 @@ VALUES
 (
     'Already Approved MiniApp',
     'Already approved Telegram MiniApp service.',
-    80.00,
+    90.00,
     'USD',
     'fixed',
     'Telegram Ads'
