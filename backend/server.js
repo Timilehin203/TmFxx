@@ -56,7 +56,7 @@ const FRONTEND_URL =
     "https://matildamillie382-crypto.github.io";
 
 const ADMIN_UPDATE_KEY =
-    process.env.ADMIN_UPDATE_KEY";
+    process.env.ADMIN_UPDATE_KEY;
 
 
 if (!ADMIN_UPDATE_KEY) {
