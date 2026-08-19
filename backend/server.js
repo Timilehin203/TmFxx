@@ -13,8 +13,8 @@
  - Secure admin login
  - Price management
  - Service activation/deactivation
- - Public Order Creation API
  - Orders API
+ - Public order status tracking
  - Order details API
  - Order status management
  - Admin order notes
@@ -252,11 +252,11 @@ app.get(
                 services:
                     "/api/services",
 
-                createOrder:
-                    "POST /api/orders",
-
                 databaseTest:
                     "/api/database-test",
+
+                publicOrderStatus:
+                    "GET /api/orders/status/:orderNumber",
 
                 adminLogin:
                     "POST /api/admin/login",
@@ -322,7 +322,15 @@ app.get(
             const result =
                 await pool.query(
                     `
-                    SELECT *
+                    SELECT
+                        id,
+                        name,
+                        description,
+                        price,
+                        currency,
+                        price_type,
+                        category,
+                        active
                     FROM services
                     WHERE active = TRUE
                     ORDER BY id ASC
@@ -368,215 +376,98 @@ app.get(
 
 
 /* =====================================================
-   PUBLIC — CREATE ORDER
+   PUBLIC — ORDER STATUS
+=====================================================
+
+   Buyers can search using their order number.
+
+   Example:
+
+   GET
+   /api/orders/status/TMF-10001
+
+   This endpoint intentionally returns ONLY
+   customer-safe information.
+
 ===================================================== */
 
-app.post(
-    "/api/orders",
+app.get(
+    "/api/orders/status/:orderNumber",
     async (req, res) => {
+
+        const orderNumber =
+            String(
+                req.params.orderNumber || ""
+            ).trim();
+
+
+        if (!orderNumber) {
+
+            return res.status(400).json({
+
+                success:
+                    false,
+
+                message:
+                    "Order number is required."
+
+            });
+
+        }
+
+
+        if (
+            orderNumber.length > 30
+        ) {
+
+            return res.status(400).json({
+
+                success:
+                    false,
+
+                message:
+                    "Invalid order number."
+
+            });
+
+        }
+
 
         try {
 
-            /*
-             ------------------------------------------------
-             Read customer information
-             ------------------------------------------------
-            */
-
-            const serviceId =
-                Number(
-                    req.body?.service_id
-                );
-
-            const contactMethod =
-                String(
-                    req.body?.contact_method || "telegram"
-                )
-                    .trim()
-                    .toLowerCase();
-
-            const telegramUsername =
-                String(
-                    req.body?.telegram_username || ""
-                )
-                    .trim()
-                    .replace(/^@/, "");
-
-            const whatsappNumber =
-                String(
-                    req.body?.whatsapp_number || ""
-                )
-                    .trim();
-
-            const customerMessage =
-                String(
-                    req.body?.customer_message || ""
-                )
-                    .trim();
-
-
-            /*
-             ------------------------------------------------
-             Validate service ID
-             ------------------------------------------------
-            */
-
-            if (
-                !Number.isInteger(serviceId) ||
-                serviceId <= 0
-            ) {
-
-                return res.status(400).json({
-
-                    success:
-                        false,
-
-                    message:
-                        "A valid service ID is required."
-
-                });
-
-            }
-
-
-            /*
-             ------------------------------------------------
-             Validate contact method
-             ------------------------------------------------
-            */
-
-            const allowedContactMethods = [
-                "telegram",
-                "whatsapp"
-            ];
-
-
-            if (
-                !allowedContactMethods.includes(
-                    contactMethod
-                )
-            ) {
-
-                return res.status(400).json({
-
-                    success:
-                        false,
-
-                    message:
-                        "Invalid contact method."
-
-                });
-
-            }
-
-
-            /*
-             ------------------------------------------------
-             Validate Telegram contact
-             ------------------------------------------------
-            */
-
-            if (
-                contactMethod === "telegram" &&
-                telegramUsername.length > 100
-            ) {
-
-                return res.status(400).json({
-
-                    success:
-                        false,
-
-                    message:
-                        "Telegram username is too long."
-
-                });
-
-            }
-
-
-            /*
-             ------------------------------------------------
-             Validate WhatsApp contact
-             ------------------------------------------------
-            */
-
-            if (
-                contactMethod === "whatsapp" &&
-                whatsappNumber.length > 30
-            ) {
-
-                return res.status(400).json({
-
-                    success:
-                        false,
-
-                    message:
-                        "WhatsApp number is too long."
-
-                });
-
-            }
-
-
-            /*
-             ------------------------------------------------
-             Limit customer message
-             ------------------------------------------------
-            */
-
-            if (
-                customerMessage.length > 5000
-            ) {
-
-                return res.status(400).json({
-
-                    success:
-                        false,
-
-                    message:
-                        "Customer message is too long."
-
-                });
-
-            }
-
-
-            /*
-             ------------------------------------------------
-             Find active service
-             ------------------------------------------------
-
-             IMPORTANT:
-             The price comes from PostgreSQL.
-
-             The customer cannot submit their own price.
-            */
-
-            const serviceResult =
+            const result =
                 await pool.query(
                     `
                     SELECT
-                        id,
-                        name,
-                        description,
-                        price,
-                        currency,
-                        price_type,
-                        category,
-                        active
-                    FROM services
-                    WHERE id = $1
-                      AND active = TRUE
+                        o.order_number,
+                        o.price,
+                        o.currency,
+                        o.status,
+                        o.created_at,
+                        o.updated_at,
+
+                        s.name AS service_name
+
+                    FROM orders o
+
+                    LEFT JOIN services s
+                        ON s.id = o.service_id
+
+                    WHERE
+                        LOWER(o.order_number)
+                        =
+                        LOWER($1)
+
                     LIMIT 1
                     `,
                     [
-                        serviceId
+                        orderNumber
                     ]
                 );
 
 
             if (
-                serviceResult.rows.length === 0
+                result.rows.length === 0
             ) {
 
                 return res.status(404).json({
@@ -585,205 +476,69 @@ app.post(
                         false,
 
                     message:
-                        "Service not found or is currently unavailable."
+                        "Order not found. Please check your order number."
 
                 });
 
             }
 
 
-            const service =
-                serviceResult.rows[0];
+            const order =
+                result.rows[0];
 
 
             /*
-             ------------------------------------------------
-             Generate unique order number
-             ------------------------------------------------
+             Convert the internal Completed status
+             to the customer-facing Delivered status.
+
+             This also keeps compatibility with
+             existing database records.
             */
 
-            let orderNumber;
-
-            let orderCreated = false;
-
-            let createdOrder;
+            let publicStatus =
+                order.status;
 
 
-            for (
-                let attempt = 0;
-                attempt < 5;
-                attempt++
+            if (
+                publicStatus ===
+                "Completed"
             ) {
 
-                const timestamp =
-                    Date.now()
-                        .toString()
-                        .slice(-8);
-
-                const random =
-                    Math.floor(
-                        1000 +
-                        Math.random() * 9000
-                    );
-
-
-                orderNumber =
-                    `TMF-${timestamp}-${random}`;
-
-
-                try {
-
-                    const orderResult =
-                        await pool.query(
-                            `
-                            INSERT INTO orders
-                            (
-                                order_number,
-                                service_id,
-                                price,
-                                currency,
-                                status,
-                                contact_method,
-                                customer_message,
-                                telegram_username,
-                                whatsapp_number
-                            )
-                            VALUES
-                            (
-                                $1,
-                                $2,
-                                $3,
-                                $4,
-                                'Pending',
-                                $5,
-                                $6,
-                                $7,
-                                $8
-                            )
-                            RETURNING
-                                id,
-                                order_number,
-                                service_id,
-                                price,
-                                currency,
-                                status,
-                                contact_method,
-                                customer_message,
-                                telegram_username,
-                                whatsapp_number,
-                                created_at
-                            `,
-                            [
-                                orderNumber,
-                                service.id,
-                                service.price,
-                                service.currency,
-                                contactMethod,
-                                customerMessage || null,
-                                telegramUsername || null,
-                                whatsappNumber || null
-                            ]
-                        );
-
-
-                    createdOrder =
-                        orderResult.rows[0];
-
-                    orderCreated =
-                        true;
-
-                    break;
-
-                } catch (error) {
-
-                    /*
-                     Retry only if the generated
-                     order number collided.
-                    */
-
-                    if (
-                        error.code === "23505"
-                    ) {
-
-                        continue;
-
-                    }
-
-                    throw error;
-
-                }
+                publicStatus =
+                    "Delivered";
 
             }
 
 
-            if (!orderCreated) {
-
-                return res.status(500).json({
-
-                    success:
-                        false,
-
-                    message:
-                        "Unable to generate a unique order number."
-
-                });
-
-            }
-
-
-            /*
-             ------------------------------------------------
-             Log successful order
-             ------------------------------------------------
-            */
-
-            console.log(
-                `New order created: ${createdOrder.order_number} - ${service.name} - $${Number(createdOrder.price).toFixed(2)}`
-            );
-
-
-            /*
-             ------------------------------------------------
-             Return order
-             ------------------------------------------------
-            */
-
-            return res.status(201).json({
+            return res.json({
 
                 success:
                     true,
 
-                message:
-                    "Order created successfully.",
-
                 order: {
 
-                    id:
-                        createdOrder.id,
-
                     order_number:
-                        createdOrder.order_number,
-
-                    service_id:
-                        createdOrder.service_id,
+                        order.order_number,
 
                     service_name:
-                        service.name,
+                        order.service_name ||
+                        "Telegram Marketing Service",
 
                     price:
-                        createdOrder.price,
+                        order.price,
 
                     currency:
-                        createdOrder.currency,
+                        order.currency ||
+                        "USD",
 
                     status:
-                        createdOrder.status,
-
-                    contact_method:
-                        createdOrder.contact_method,
+                        publicStatus,
 
                     created_at:
-                        createdOrder.created_at
+                        order.created_at,
+
+                    updated_at:
+                        order.updated_at
 
                 }
 
@@ -792,8 +547,8 @@ app.post(
         } catch (error) {
 
             console.error(
-                "Create order error:",
-                error
+                "Public order status error:",
+                error.message
             );
 
 
@@ -803,7 +558,7 @@ app.post(
                     false,
 
                 message:
-                    "Unable to create order."
+                    "Unable to check order status."
 
             });
 
@@ -1193,10 +948,14 @@ app.patch(
                 await pool.query(
                     `
                     UPDATE services
+
                     SET
                         price = $1,
-                        updated_at = CURRENT_TIMESTAMP
+                        updated_at =
+                            CURRENT_TIMESTAMP
+
                     WHERE id = $2
+
                     RETURNING
                         id,
                         name,
@@ -1328,10 +1087,14 @@ app.patch(
                 await pool.query(
                     `
                     UPDATE services
+
                     SET
                         active = $1,
-                        updated_at = CURRENT_TIMESTAMP
+                        updated_at =
+                            CURRENT_TIMESTAMP
+
                     WHERE id = $2
+
                     RETURNING
                         id,
                         name,
@@ -1639,8 +1402,9 @@ app.patch(
         const allowedStatuses = [
             "Pending",
             "Processing",
-            "Completed",
-            "Cancelled"
+            "Delivered",
+            "Cancelled",
+            "Completed"
         ];
 
 
@@ -1674,7 +1438,7 @@ app.patch(
                     false,
 
                 message:
-                    "Invalid order status. Use Pending, Processing, Completed, or Cancelled."
+                    "Invalid order status. Use Pending, Processing, Delivered, or Cancelled."
 
             });
 
@@ -1690,7 +1454,8 @@ app.patch(
 
                     SET
                         status = $1,
-                        updated_at = CURRENT_TIMESTAMP
+                        updated_at =
+                            CURRENT_TIMESTAMP
 
                     WHERE id = $2
 
@@ -1838,7 +1603,8 @@ app.patch(
 
                     SET
                         admin_notes = $1,
-                        updated_at = CURRENT_TIMESTAMP
+                        updated_at =
+                            CURRENT_TIMESTAMP
 
                     WHERE id = $2
 
@@ -2071,7 +1837,7 @@ async function startServer() {
                     );
 
                     console.log(
-                        "Order Creation: ENABLED"
+                        "Public Order Tracking: ENABLED"
                     );
 
                     console.log(
