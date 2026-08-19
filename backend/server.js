@@ -3,7 +3,7 @@
 /*
 =========================================================
  TimiFxx Marketing Backend
- Version: 2.0.0
+ Version: 2.1.0
 
  Features:
  - PostgreSQL connection
@@ -13,6 +13,10 @@
  - Secure admin login
  - Price management
  - Service activation/deactivation
+ - Orders API
+ - Order details API
+ - Order status management
+ - Admin order notes
  - Health check
  - Railway deployment support
  - Graceful shutdown
@@ -43,7 +47,8 @@ const app = express();
    ENVIRONMENT VARIABLES
 ===================================================== */
 
-const PORT = Number(process.env.PORT) || 8080;
+const PORT =
+    Number(process.env.PORT) || 8080;
 
 const FRONTEND_URL =
     process.env.FRONTEND_URL ||
@@ -51,6 +56,7 @@ const FRONTEND_URL =
 
 const ADMIN_UPDATE_KEY =
     process.env.ADMIN_UPDATE_KEY;
+
 
 if (!ADMIN_UPDATE_KEY) {
 
@@ -118,18 +124,23 @@ app.get("/", (req, res) => {
 
         success: true,
 
-        project: "TimiFxx Marketing",
+        project:
+            "TimiFxx Marketing",
 
-        version: "2.0.0",
+        version:
+            "2.1.0",
 
-        status: "online",
+        status:
+            "online",
 
         message:
             "TimiFxx Marketing API is running.",
 
-        frontend: FRONTEND_URL,
+        frontend:
+            FRONTEND_URL,
 
-        database: "PostgreSQL"
+        database:
+            "PostgreSQL"
 
     });
 
@@ -140,112 +151,148 @@ app.get("/", (req, res) => {
    HEALTH CHECK
 ===================================================== */
 
-app.get("/api/health", async (req, res) => {
+app.get(
+    "/api/health",
+    async (req, res) => {
 
-    try {
+        try {
 
-        const result = await pool.query(
-            "SELECT NOW() AS database_time"
-        );
+            const result =
+                await pool.query(
+                    "SELECT NOW() AS database_time"
+                );
 
-        res.json({
 
-            success: true,
+            res.json({
 
-            status: "online",
+                success:
+                    true,
 
-            database: "connected",
+                status:
+                    "online",
 
-            project: "TimiFxx Marketing",
+                database:
+                    "connected",
 
-            database_time:
-                result.rows[0].database_time,
+                project:
+                    "TimiFxx Marketing",
 
-            time:
-                new Date().toISOString()
+                database_time:
+                    result.rows[0].database_time,
 
-        });
+                time:
+                    new Date().toISOString()
 
-    } catch (error) {
+            });
 
-        console.error(
-            "Health check database error:",
-            error.message
-        );
+        } catch (error) {
 
-        res.status(503).json({
+            console.error(
+                "Health check database error:",
+                error.message
+            );
 
-            success: false,
 
-            status: "degraded",
+            res.status(503).json({
 
-            database: "disconnected",
+                success:
+                    false,
 
-            message:
-                "Database connection unavailable."
+                status:
+                    "degraded",
 
-        });
+                database:
+                    "disconnected",
+
+                message:
+                    "Database connection unavailable."
+
+            });
+
+        }
 
     }
-
-});
+);
 
 
 /* =====================================================
    API INFORMATION
 ===================================================== */
 
-app.get("/api", (req, res) => {
+app.get(
+    "/api",
+    (req, res) => {
 
-    res.json({
+        res.json({
 
-        success: true,
+            success:
+                true,
 
-        project: "TimiFxx Marketing",
+            project:
+                "TimiFxx Marketing",
 
-        version: "2.0.0",
+            version:
+                "2.1.0",
 
-        status: "online",
+            status:
+                "online",
 
-        endpoints: {
+            endpoints: {
 
-            home: "/",
+                home:
+                    "/",
 
-            api: "/api",
+                api:
+                    "/api",
 
-            health: "/api/health",
+                health:
+                    "/api/health",
 
-            services: "/api/services",
+                services:
+                    "/api/services",
 
-            databaseTest:
-                "/api/database-test",
+                databaseTest:
+                    "/api/database-test",
 
-            adminLogin:
-                "POST /api/admin/login",
+                adminLogin:
+                    "POST /api/admin/login",
 
-            adminServices:
-                "GET /api/admin/services",
+                adminServices:
+                    "GET /api/admin/services",
 
-            adminUpdatePrice:
-                "PATCH /api/admin/services/:id/price",
+                adminUpdatePrice:
+                    "PATCH /api/admin/services/:id/price",
 
-            adminUpdateStatus:
-                "PATCH /api/admin/services/:id/status",
+                adminUpdateStatus:
+                    "PATCH /api/admin/services/:id/status",
 
-            signup:
-                "POST /api/auth/signup",
+                adminOrders:
+                    "GET /api/admin/orders",
 
-            login:
-                "POST /api/auth/login",
+                adminOrder:
+                    "GET /api/admin/orders/:id",
 
-            currentUser:
-                "GET /api/auth/me"
+                adminOrderStatus:
+                    "PATCH /api/admin/orders/:id/status",
 
-        }
+                adminOrderNotes:
+                    "PATCH /api/admin/orders/:id/notes",
 
-    });
+                signup:
+                    "POST /api/auth/signup",
 
-});
+                login:
+                    "POST /api/auth/login",
+
+                currentUser:
+                    "GET /api/auth/me"
+
+            }
+
+        });
+
+    }
+);
 
 
 /* =====================================================
@@ -273,13 +320,16 @@ app.get(
                     `
                     SELECT *
                     FROM services
+                    WHERE active = TRUE
                     ORDER BY id ASC
                     `
                 );
 
+
             res.json({
 
-                success: true,
+                success:
+                    true,
 
                 count:
                     result.rows.length,
@@ -296,9 +346,11 @@ app.get(
                 error.message
             );
 
+
             res.status(500).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
                     "Unable to load services."
@@ -329,13 +381,17 @@ app.get(
                     `
                 );
 
+
             res.json({
 
-                success: true,
+                success:
+                    true,
 
-                database: "PostgreSQL",
+                database:
+                    "PostgreSQL",
 
-                status: "connected",
+                status:
+                    "connected",
 
                 database_time:
                     result.rows[0].database_time
@@ -349,13 +405,17 @@ app.get(
                 error.message
             );
 
+
             res.status(500).json({
 
-                success: false,
+                success:
+                    false,
 
-                database: "PostgreSQL",
+                database:
+                    "PostgreSQL",
 
-                status: "disconnected",
+                status:
+                    "disconnected",
 
                 message:
                     "Database connection failed."
@@ -383,11 +443,13 @@ app.post(
                     req.body?.key || ""
                 ).trim();
 
+
             if (!providedKey) {
 
                 return res.status(400).json({
 
-                    success: false,
+                    success:
+                        false,
 
                     message:
                         "Admin key is required."
@@ -404,7 +466,8 @@ app.post(
 
                 return res.status(401).json({
 
-                    success: false,
+                    success:
+                        false,
 
                     message:
                         "Invalid admin key."
@@ -416,9 +479,9 @@ app.post(
 
             const token =
                 jwt.sign(
-
                     {
-                        role: "admin"
+                        role:
+                            "admin"
                     },
 
                     ADMIN_UPDATE_KEY,
@@ -427,13 +490,13 @@ app.post(
                         expiresIn:
                             "2h"
                     }
-
                 );
 
 
             return res.json({
 
-                success: true,
+                success:
+                    true,
 
                 message:
                     "Admin login successful.",
@@ -452,9 +515,11 @@ app.post(
                 error.message
             );
 
+
             return res.status(500).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
                     "Admin login failed."
@@ -471,12 +536,17 @@ app.post(
    ADMIN AUTH MIDDLEWARE
 ===================================================== */
 
-function requireAdmin(req, res, next) {
+function requireAdmin(
+    req,
+    res,
+    next
+) {
 
     try {
 
         const authHeader =
             req.headers.authorization || "";
+
 
         if (
             !authHeader.startsWith(
@@ -486,7 +556,8 @@ function requireAdmin(req, res, next) {
 
             return res.status(401).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
                     "Admin authentication required."
@@ -514,7 +585,8 @@ function requireAdmin(req, res, next) {
 
             return res.status(403).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
                     "Administrator access required."
@@ -524,7 +596,9 @@ function requireAdmin(req, res, next) {
         }
 
 
-        req.admin = decoded;
+        req.admin =
+            decoded;
+
 
         next();
 
@@ -532,7 +606,8 @@ function requireAdmin(req, res, next) {
 
         return res.status(401).json({
 
-            success: false,
+            success:
+                false,
 
             message:
                 "Admin session expired or invalid."
@@ -575,7 +650,8 @@ app.get(
 
             res.json({
 
-                success: true,
+                success:
+                    true,
 
                 count:
                     result.rows.length,
@@ -592,9 +668,11 @@ app.get(
                 error.message
             );
 
+
             res.status(500).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
                     "Unable to load admin services."
@@ -630,7 +708,8 @@ app.patch(
 
             return res.status(400).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
                     "Invalid service ID."
@@ -647,7 +726,8 @@ app.patch(
 
             return res.status(400).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
                     "Price must be a valid positive number."
@@ -663,7 +743,9 @@ app.patch(
                 await pool.query(
                     `
                     UPDATE services
-                    SET price = $1
+                    SET
+                        price = $1,
+                        updated_at = CURRENT_TIMESTAMP
                     WHERE id = $2
                     RETURNING
                         id,
@@ -685,7 +767,8 @@ app.patch(
 
                 return res.status(404).json({
 
-                    success: false,
+                    success:
+                        false,
 
                     message:
                         "Service not found."
@@ -702,7 +785,8 @@ app.patch(
 
             res.json({
 
-                success: true,
+                success:
+                    true,
 
                 message:
                     "Service price updated successfully.",
@@ -719,9 +803,11 @@ app.patch(
                 error.message
             );
 
+
             res.status(500).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
                     "Unable to update service price."
@@ -757,7 +843,8 @@ app.patch(
 
             return res.status(400).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
                     "Invalid service ID."
@@ -774,7 +861,8 @@ app.patch(
 
             return res.status(400).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
                     "Active must be true or false."
@@ -790,7 +878,9 @@ app.patch(
                 await pool.query(
                     `
                     UPDATE services
-                    SET active = $1
+                    SET
+                        active = $1,
+                        updated_at = CURRENT_TIMESTAMP
                     WHERE id = $2
                     RETURNING
                         id,
@@ -812,7 +902,8 @@ app.patch(
 
                 return res.status(404).json({
 
-                    success: false,
+                    success:
+                        false,
 
                     message:
                         "Service not found."
@@ -829,7 +920,8 @@ app.patch(
 
             res.json({
 
-                success: true,
+                success:
+                    true,
 
                 message:
                     "Service status updated successfully.",
@@ -846,12 +938,523 @@ app.patch(
                 error.message
             );
 
+
             res.status(500).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
                     "Unable to update service status."
+
+            });
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+   ADMIN — GET ALL ORDERS
+===================================================== */
+
+app.get(
+    "/api/admin/orders",
+    requireAdmin,
+    async (req, res) => {
+
+        try {
+
+            const result =
+                await pool.query(
+                    `
+                    SELECT
+                        o.id,
+                        o.order_number,
+                        o.user_id,
+                        o.service_id,
+                        o.price,
+                        o.currency,
+                        o.status,
+                        o.contact_method,
+                        o.customer_message,
+                        o.telegram_username,
+                        o.whatsapp_number,
+                        o.admin_notes,
+                        o.created_at,
+                        o.updated_at,
+
+                        s.name AS service_name,
+                        s.description AS service_description,
+
+                        u.name AS customer_name,
+                        u.email AS customer_email
+
+                    FROM orders o
+
+                    LEFT JOIN services s
+                        ON s.id = o.service_id
+
+                    LEFT JOIN users u
+                        ON u.id = o.user_id
+
+                    ORDER BY
+                        o.created_at DESC,
+                        o.id DESC
+                    `
+                );
+
+
+            res.json({
+
+                success:
+                    true,
+
+                count:
+                    result.rows.length,
+
+                orders:
+                    result.rows
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Admin orders error:",
+                error.message
+            );
+
+
+            res.status(500).json({
+
+                success:
+                    false,
+
+                message:
+                    "Unable to load orders."
+
+            });
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+   ADMIN — GET SINGLE ORDER
+===================================================== */
+
+app.get(
+    "/api/admin/orders/:id",
+    requireAdmin,
+    async (req, res) => {
+
+        const id =
+            Number(req.params.id);
+
+
+        if (
+            !Number.isInteger(id) ||
+            id <= 0
+        ) {
+
+            return res.status(400).json({
+
+                success:
+                    false,
+
+                message:
+                    "Invalid order ID."
+
+            });
+
+        }
+
+
+        try {
+
+            const result =
+                await pool.query(
+                    `
+                    SELECT
+                        o.id,
+                        o.order_number,
+                        o.user_id,
+                        o.service_id,
+                        o.price,
+                        o.currency,
+                        o.status,
+                        o.contact_method,
+                        o.customer_message,
+                        o.telegram_username,
+                        o.whatsapp_number,
+                        o.admin_notes,
+                        o.created_at,
+                        o.updated_at,
+
+                        s.name AS service_name,
+                        s.description AS service_description,
+
+                        u.name AS customer_name,
+                        u.email AS customer_email
+
+                    FROM orders o
+
+                    LEFT JOIN services s
+                        ON s.id = o.service_id
+
+                    LEFT JOIN users u
+                        ON u.id = o.user_id
+
+                    WHERE o.id = $1
+
+                    LIMIT 1
+                    `,
+                    [id]
+                );
+
+
+            if (
+                result.rows.length === 0
+            ) {
+
+                return res.status(404).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Order not found."
+
+                });
+
+            }
+
+
+            res.json({
+
+                success:
+                    true,
+
+                order:
+                    result.rows[0]
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Admin single order error:",
+                error.message
+            );
+
+
+            res.status(500).json({
+
+                success:
+                    false,
+
+                message:
+                    "Unable to load order."
+
+            });
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+   ADMIN — UPDATE ORDER STATUS
+===================================================== */
+
+app.patch(
+    "/api/admin/orders/:id/status",
+    requireAdmin,
+    async (req, res) => {
+
+        const id =
+            Number(req.params.id);
+
+        const status =
+            String(
+                req.body?.status || ""
+            ).trim();
+
+
+        const allowedStatuses = [
+            "Pending",
+            "Processing",
+            "Completed",
+            "Cancelled"
+        ];
+
+
+        if (
+            !Number.isInteger(id) ||
+            id <= 0
+        ) {
+
+            return res.status(400).json({
+
+                success:
+                    false,
+
+                message:
+                    "Invalid order ID."
+
+            });
+
+        }
+
+
+        if (
+            !allowedStatuses.includes(
+                status
+            )
+        ) {
+
+            return res.status(400).json({
+
+                success:
+                    false,
+
+                message:
+                    "Invalid order status. Use Pending, Processing, Completed, or Cancelled."
+
+            });
+
+        }
+
+
+        try {
+
+            const result =
+                await pool.query(
+                    `
+                    UPDATE orders
+
+                    SET
+                        status = $1,
+                        updated_at = CURRENT_TIMESTAMP
+
+                    WHERE id = $2
+
+                    RETURNING
+                        id,
+                        order_number,
+                        price,
+                        currency,
+                        status,
+                        updated_at
+                    `,
+                    [
+                        status,
+                        id
+                    ]
+                );
+
+
+            if (
+                result.rows.length === 0
+            ) {
+
+                return res.status(404).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Order not found."
+
+                });
+
+            }
+
+
+            console.log(
+                `Admin changed order ${id} status to ${status}`
+            );
+
+
+            res.json({
+
+                success:
+                    true,
+
+                message:
+                    "Order status updated successfully.",
+
+                order:
+                    result.rows[0]
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Admin order status error:",
+                error.message
+            );
+
+
+            res.status(500).json({
+
+                success:
+                    false,
+
+                message:
+                    "Unable to update order status."
+
+            });
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+   ADMIN — UPDATE ORDER NOTES
+===================================================== */
+
+app.patch(
+    "/api/admin/orders/:id/notes",
+    requireAdmin,
+    async (req, res) => {
+
+        const id =
+            Number(req.params.id);
+
+        const adminNotes =
+            req.body?.admin_notes;
+
+
+        if (
+            !Number.isInteger(id) ||
+            id <= 0
+        ) {
+
+            return res.status(400).json({
+
+                success:
+                    false,
+
+                message:
+                    "Invalid order ID."
+
+            });
+
+        }
+
+
+        if (
+            adminNotes !== null &&
+            typeof adminNotes !==
+                "string"
+        ) {
+
+            return res.status(400).json({
+
+                success:
+                    false,
+
+                message:
+                    "Admin notes must be text."
+
+            });
+
+        }
+
+
+        const notes =
+            adminNotes === null
+                ? null
+                : String(
+                    adminNotes
+                ).trim();
+
+
+        try {
+
+            const result =
+                await pool.query(
+                    `
+                    UPDATE orders
+
+                    SET
+                        admin_notes = $1,
+                        updated_at = CURRENT_TIMESTAMP
+
+                    WHERE id = $2
+
+                    RETURNING
+                        id,
+                        order_number,
+                        admin_notes,
+                        updated_at
+                    `,
+                    [
+                        notes,
+                        id
+                    ]
+                );
+
+
+            if (
+                result.rows.length === 0
+            ) {
+
+                return res.status(404).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Order not found."
+
+                });
+
+            }
+
+
+            console.log(
+                `Admin updated notes for order ${id}`
+            );
+
+
+            res.json({
+
+                success:
+                    true,
+
+                message:
+                    "Order notes updated successfully.",
+
+                order:
+                    result.rows[0]
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Admin order notes error:",
+                error.message
+            );
+
+
+            res.status(500).json({
+
+                success:
+                    false,
+
+                message:
+                    "Unable to update order notes."
 
             });
 
@@ -870,7 +1473,8 @@ app.use(
 
         res.status(404).json({
 
-            success: false,
+            success:
+                false,
 
             message:
                 "API endpoint not found.",
@@ -897,7 +1501,9 @@ app.use(
         );
 
 
-        if (res.headersSent) {
+        if (
+            res.headersSent
+        ) {
 
             return next(error);
 
@@ -908,7 +1514,8 @@ app.use(
             error.status || 500
         ).json({
 
-            success: false,
+            success:
+                false,
 
             message:
                 error.message ||
@@ -1010,6 +1617,10 @@ async function startServer() {
                     );
 
                     console.log(
+                        "Orders API: ENABLED"
+                    );
+
+                    console.log(
                         "Status: ONLINE"
                     );
 
@@ -1040,13 +1651,16 @@ async function startServer() {
 
                             await pool.end();
 
+
                             console.log(
                                 "PostgreSQL connection pool closed."
                             );
 
+
                             console.log(
                                 "Server shutdown complete."
                             );
+
 
                             process.exit(0);
 
@@ -1056,6 +1670,7 @@ async function startServer() {
                                 "Error during shutdown:",
                                 error.message
                             );
+
 
                             process.exit(1);
 
@@ -1069,12 +1684,19 @@ async function startServer() {
 
         process.once(
             "SIGTERM",
-            () => shutdown("SIGTERM")
+            () =>
+                shutdown(
+                    "SIGTERM"
+                )
         );
+
 
         process.once(
             "SIGINT",
-            () => shutdown("SIGINT")
+            () =>
+                shutdown(
+                    "SIGINT"
+                )
         );
 
 
